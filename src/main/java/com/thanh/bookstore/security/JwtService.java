@@ -1,14 +1,19 @@
 package com.thanh.bookstore.security;
 
 import com.thanh.bookstore.entity.User;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Service for generating and validating JWT tokens.
@@ -22,19 +27,21 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expirationTime;
 
-    /** Generates a JWT token for a given user. */
+    private static final Logger log = LogManager.getLogger(JwtService.class);
+
+    /** Generates a JWT token for a given user through id. */
     public String generateToken(User user) {
         return Jwts.builder()
-                .subject(user.getUsername())
-                .claim("role", user.getRole().name())
+                .subject(String.valueOf(user.getId()))
+                .claim("roles", List.of(user.getRole().name()))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey())
                 .compact();
     }
 
-    /** Extracts the username from a JWT token. */
-    public String extractUsername(String token) {
+    /** Extracts the user id from a JWT token. */
+    public String extractId(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
@@ -54,7 +61,11 @@ public class JwtService {
                     .getExpiration();
 
             return expiration.after(new Date());
-        } catch (Exception e) {
+        } catch (ExpiredJwtException e) {
+            log.warn("Token expired: {}", e.getMessage());
+            return false;
+        } catch (JwtException e) {
+            log.warn("Invalid token: {}", e.getMessage());
             return false;
         }
     }
