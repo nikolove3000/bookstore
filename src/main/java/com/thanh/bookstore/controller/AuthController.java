@@ -36,7 +36,7 @@ public class AuthController {
     public ResponseEntity<RegisterResponse> register(
             @RequestBody RegisterRequest request) {
 
-        return ResponseEntity.ok(userService.register(request));
+        return ResponseEntity.created(null).body(userService.register(request));
     }
 
     /**
