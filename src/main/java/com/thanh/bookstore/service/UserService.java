@@ -6,16 +6,21 @@ import com.thanh.bookstore.dto.RegisterRequest;
 import com.thanh.bookstore.dto.RegisterResponse;
 import com.thanh.bookstore.entity.User;
 import com.thanh.bookstore.entity.enums.Role;
+import com.thanh.bookstore.exception.DuplicateEmailException;
+import com.thanh.bookstore.exception.DuplicateUsernameException;
+import com.thanh.bookstore.exception.InvalidCredentialsException;
+import com.thanh.bookstore.exception.UserNotFoundException;
 import com.thanh.bookstore.repository.UserRepository;
 import com.thanh.bookstore.security.JwtService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
  * Service for managing user accounts and authentication.
+ *
+ * <p>Provides operations for user registration, login, and user retrieval.</p>
  */
 @Service
 public class UserService implements UserDetailsService {
@@ -40,34 +45,46 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Loads a user by username for authentication.
+     * Loads a user by username.
      *
      * @param username the username
      * @return authenticated user details
-     * @throws UsernameNotFoundException if the user is not found
+     * @throws UserNotFoundException if the user does not exist
      */
     @Override
-    public UserDetails loadUserByUsername(String username)
-            throws UsernameNotFoundException {
-
+    public UserDetails loadUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found!"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     /**
-     * Registers a new user account.
+     * Loads a user by ID.
+     *
+     * @param id user ID
+     * @return user details
+     * @throws UserNotFoundException if the user does not exist
+     */
+    public UserDetails loadUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User ID not found"));
+    }
+
+    /**
+     * Registers a new user.
      *
      * @param request registration data
      * @return registered user information
-     * @throws RuntimeException if username or email already exists
+     * @throws DuplicateUsernameException if username exists
+     * @throws DuplicateEmailException if email exists
      */
     public RegisterResponse register(RegisterRequest request) {
 
-        if (userRepository.existsByUsername(request.getUsername())
-                || userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateUsernameException("Username already exists");
+        }
 
-            throw new RuntimeException("Username hoac email da ton tai!");
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateEmailException("Email already exists");
         }
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
@@ -87,22 +104,23 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Authenticates a user and returns an access token.
+     * Authenticates a user and returns a JWT token.
      *
      * @param request login credentials
      * @return authentication result containing token and role
-     * @throws RuntimeException if credentials are invalid
+     * @throws UserNotFoundException if user not found
+     * @throws InvalidCredentialsException if password is invalid
      */
     public LoginResponse login(LoginRequest request) {
 
         User user = request.getUsernameOrEmail().contains("@")
                 ? userRepository.findByEmail(request.getUsernameOrEmail())
-                .orElseThrow(() -> new RuntimeException("Khong tim thay email!"))
+                .orElseThrow(() -> new UserNotFoundException("Email not found"))
                 : userRepository.findByUsername(request.getUsernameOrEmail())
-                .orElseThrow(() -> new RuntimeException("Khong tim thay username"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Sai mat khau!");
+            throw new InvalidCredentialsException("Invalid password");
         }
 
         String token = jwtService.generateToken(user);
