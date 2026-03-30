@@ -15,21 +15,11 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Entity representing a user in the bookstore system.
+ * Represents a user in the bookstore system.
  *
  * <p>
- * This class is a JPA entity mapped to the {@code users} table
- * and implements {@link UserDetails} to integrate with Spring Security.
- * It stores login credentials, personal information, role, and
- * related orders, cart, and reviews.
- * </p>
- *
- * <p><b>Relationships:</b>
- * <ul>
- *     <li>One user → many orders (One-to-Many)</li>
- *     <li>One user → one cart (One-to-One)</li>
- *     <li>One user → many reviews (One-to-Many)</li>
- * </ul>
+ * Maps to {@code users} table and integrates with Spring Security.
+ * Stores login credentials, role, and relationships to orders, cart, and reviews.
  * </p>
  */
 @Entity
@@ -81,6 +71,11 @@ public class User implements UserDetails {
     /** Role of the user in the system. */
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 
     /**
      * Orders placed by the user.
