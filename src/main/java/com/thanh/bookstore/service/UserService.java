@@ -5,12 +5,14 @@ import com.thanh.bookstore.dto.LoginResponse;
 import com.thanh.bookstore.dto.RegisterRequest;
 import com.thanh.bookstore.dto.RegisterResponse;
 import com.thanh.bookstore.entity.RefreshToken;
+import com.thanh.bookstore.entity.TokenBlacklist;
 import com.thanh.bookstore.entity.User;
 import com.thanh.bookstore.entity.enums.Role;
 import com.thanh.bookstore.exception.DuplicateEmailException;
 import com.thanh.bookstore.exception.DuplicateUsernameException;
 import com.thanh.bookstore.exception.InvalidCredentialsException;
 import com.thanh.bookstore.exception.UserNotFoundException;
+import com.thanh.bookstore.repository.TokenBlacklistRepository;
 import com.thanh.bookstore.service.model.LoginResult;
 import com.thanh.bookstore.repository.RefreshTokenRepository;
 import com.thanh.bookstore.repository.UserRepository;
@@ -22,10 +24,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.UUID;
 
 /**
- * Service for managing user accounts, authentication, and refresh tokens.
+ * Service responsible for user account management and authentication workflows.
+ *
+ * <p>Role: Service Layer component.</p>
+ *
+ * <p>Handles registration, authentication, JWT issuance, refresh token rotation,
+ * token revocation, and user retrieval for security operations.</p>
  */
 @Service
 public class UserService implements UserDetailsService {
@@ -34,28 +43,34 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
     /**
-     * Constructs a UserService with required dependencies.
+     * Creates the service with required persistence and security dependencies.
      *
-     * @param userRepository repository for user persistence
-     * @param passwordEncoder encoder for password hashing
-     * @param jwtService service for JWT operations
-     * @param refreshTokenRepository repository for refresh token persistence
+     * @param userRepository repository managing users
+     * @param passwordEncoder password hashing component
+     * @param jwtService JWT issuing and validation service
+     * @param refreshTokenRepository repository managing refresh tokens
+     * @param tokenBlacklistRepository repository storing revoked tokens
      */
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       RefreshTokenRepository refreshTokenRepository) {
+                       RefreshTokenRepository refreshTokenRepository,
+                       TokenBlacklistRepository tokenBlacklistRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.tokenBlacklistRepository = tokenBlacklistRepository;
     }
 
-    /** Loads a user by username.
-     * @param username the username
-     * @return user details
+    /**
+     * Loads user details by username for authentication.
+     *
+     * @param username unique username
+     * @return authenticated user details
      * @throws UserNotFoundException if the user does not exist
      */
     @Override
@@ -64,8 +79,10 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
-    /** Loads a user by ID.
-     * @param id user ID
+    /**
+     * Loads user details using the user identifier.
+     *
+     * @param id user identifier
      * @return user details
      * @throws UserNotFoundException if the user does not exist
      */
@@ -74,11 +91,16 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UserNotFoundException("User ID not found"));
     }
 
-    /** Registers a new user.
+    /**
+     * Registers a new user account.
+     *
+     * <p>Ensures username and email uniqueness before persisting
+     * a new user with default USER role.</p>
+     *
      * @param request registration data
-     * @return registered user info
-     * @throws DuplicateUsernameException if username exists
-     * @throws DuplicateEmailException if email exists
+     * @return registration result containing created user information
+     * @throws DuplicateUsernameException if username already exists
+     * @throws DuplicateEmailException if email already exists
      */
     public RegisterResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -102,12 +124,15 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Authenticates a user and generates an access token.
+     * Authenticates a user and issues an access token.
+     *
+     * <p>Supports authentication using username or email credentials.
+     * Returns authenticated user context together with issued token data.</p>
      *
      * @param request login credentials
-     * @return login result containing response data and authenticated user
-     * @throws UserNotFoundException if the user does not exist
-     * @throws InvalidCredentialsException if the password is invalid
+     * @return authentication result containing response payload and user
+     * @throws UserNotFoundException if user cannot be located
+     * @throws InvalidCredentialsException if password validation fails
      */
     public LoginResult login(LoginRequest request) {
         User user = request.getUsernameOrEmail().contains("@")
@@ -125,8 +150,10 @@ public class UserService implements UserDetailsService {
         return new LoginResult(loginResponse, user);
     }
 
-    /** Creates a refresh token for a user.
-     * @param user the user
+    /**
+     * Creates and persists a refresh token associated with a user.
+     *
+     * @param user authenticated user
      * @return persisted refresh token
      */
     public RefreshToken createRefreshToken(User user) {
@@ -139,21 +166,20 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Generates a new access token using a valid refresh token.
+     * Rotates refresh token and issues a new access token.
      *
-     * <p>The provided refresh token is validated for existence and expiration.
-     * If valid, the old refresh token is revoked and a new token pair
-     * (access token and refresh token) is issued.</p>
+     * <p>Validates refresh token existence and expiration.
+     * The previous refresh token is revoked and replaced
+     * with a newly issued token pair.</p>
      *
-     * @param token the refresh token issued during authentication
-     * @return a {@link TokenPair} containing the new access token and refresh token
-     * @throws InvalidCredentialsException if the refresh token does not exist
-     *                                     or has expired
+     * @param token refresh token provided by client
+     * @return new access token and refresh token pair
+     * @throws InvalidCredentialsException if token is missing or expired
      */
     public TokenPair refreshAccessToken(String token) {
 
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow( () -> new InvalidCredentialsException("Refresh token not found!"));
+                .orElseThrow(() -> new InvalidCredentialsException("Refresh token not found!"));
 
         if (refreshToken.getExpiredAt().isBefore(LocalDateTime.now())) {
 
@@ -172,15 +198,36 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Logs out the specified user by revoking all associated refresh tokens.
+     * Logs out a user by revoking authentication tokens.
      *
-     * <p>After logout, existing refresh tokens can no longer be used
-     * to obtain new access tokens.</p>
+     * <p>The access token is blacklisted and all refresh tokens
+     * associated with the user are removed.</p>
      *
-     * @param user the authenticated user to be logged out
+     * @param accessToken active access token
+     * @param user authenticated user
      */
-    public void logout(User user) {
+    public void logout(String accessToken, User user) {
 
+        blacklistToken(accessToken);
         refreshTokenRepository.deleteByUser(user);
+    }
+
+    /**
+     * Adds an access token to the blacklist until its expiration time.
+     *
+     * @param token access token to revoke
+     */
+    public void blacklistToken(String token) {
+
+        TokenBlacklist tokenBlacklist = new TokenBlacklist();
+        tokenBlacklist.setToken(token);
+
+        Date expirationDate = jwtService.extractExpiration(token);
+        tokenBlacklist.setExpiredAt(expirationDate
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime());
+
+        tokenBlacklistRepository.save(tokenBlacklist);
     }
 }
