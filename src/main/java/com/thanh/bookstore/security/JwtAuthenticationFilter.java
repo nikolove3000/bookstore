@@ -1,5 +1,6 @@
 package com.thanh.bookstore.security;
 
+import com.thanh.bookstore.repository.TokenBlacklistRepository;
 import com.thanh.bookstore.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserService userService;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
 
     /**
@@ -34,11 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      *
      * @param jwtService service used for JWT operations
      * @param userService service used to load user details
+     * @param tokenBlacklistRepository repository storing revoked tokens
      */
     public JwtAuthenticationFilter(JwtService jwtService,
-                                   UserService userService) {
+                                   UserService userService,
+                                   TokenBlacklistRepository tokenBlacklistRepository) {
         this.jwtService = jwtService;
         this.userService = userService;
+        this.tokenBlacklistRepository = tokenBlacklistRepository;
     }
 
     /**
@@ -66,7 +71,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
         String userId = jwtService.extractId(token);
 
-        if (userId != null && jwtService.isTokenValid(token)) {
+        if (userId != null && jwtService.isTokenValid(token)
+        && !tokenBlacklistRepository.existsByToken(token)) {
             UserDetails userDetails = userService.loadUserById(Long.parseLong(userId));
 
             UsernamePasswordAuthenticationToken authToken =
