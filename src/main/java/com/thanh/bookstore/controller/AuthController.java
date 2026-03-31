@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -78,7 +79,7 @@ public class AuthController {
 
         response.addHeader("Set-Cookie",
                 "refresh_token=" + refreshToken.getToken()
-                        + "; HttpOnly; Secure; Path=/; Max-Age=604800; SameSite=Strict");
+                        + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict");
 
         return ResponseEntity.ok(result.getLoginResponse());
     }
@@ -120,9 +121,10 @@ public class AuthController {
 
         response.addHeader("Set-Cookie",
                 "refresh_token=" + tokenPair.getRefreshToken()
-                        + "; HttpOnly; Secure; Path=/; Max-Age=604800; SameSite=Strict");
+                        + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict");
 
-        return ResponseEntity.ok(tokenPair.getAccessToken());
+        return ResponseEntity.ok(new LoginResponse
+                ( tokenPair.getUsername(), tokenPair.getAccessToken(), tokenPair.getRole()));
     }
 
     /**
@@ -150,10 +152,11 @@ public class AuthController {
             }
         }
 
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userService.findByUsername(userDetails.getUsername());
 
         response.addHeader("Set-Cookie",
-                "refresh_token=; HttpOnly; Secure; Path=/; Max-Age=0; SameSite=Strict");
+                "refresh_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict");
 
         String authHeader = request.getHeader("Authorization");
 
