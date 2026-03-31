@@ -19,7 +19,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Controller for authentication operations.
+ * REST controller handling authentication and session lifecycle operations.
+ *
+ * <p>Role: Controller Layer.</p>
+ *
+ * <p>Provides endpoints for user registration, authentication,
+ * access token issuance, refresh token rotation, and logout.</p>
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -28,9 +33,9 @@ public class AuthController {
     private final UserService userService;
 
     /**
-     * Creates an AuthController.
+     * Creates the authentication controller.
      *
-     * @param userService service handling authentication logic
+     * @param userService service responsible for authentication workflows
      */
     public AuthController(UserService userService) {
         this.userService = userService;
@@ -39,8 +44,10 @@ public class AuthController {
     /**
      * Registers a new user account.
      *
-     * @param request registration data
-     * @return registered user information
+     * <p>HTTP POST /api/auth/register</p>
+     *
+     * @param request registration payload
+     * @return HTTP 201 response containing registered user information
      */
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(
@@ -52,9 +59,15 @@ public class AuthController {
     /**
      * Authenticates a user and issues authentication tokens.
      *
+     * <p>HTTP POST /api/auth/login</p>
+     *
+     * <p>Authenticates user credentials, returns an access token in the
+     * response body, and issues a refresh token as a secure HttpOnly cookie.</p>
+     *
      * @param request login credentials
      * @param response HTTP response used to attach refresh token cookie
-     * @return access token response
+     * @return HTTP 200 response containing access token information
+     * @throws InvalidCredentialsException if authentication fails
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -71,17 +84,17 @@ public class AuthController {
     }
 
     /**
-     * Refreshes the access token using the refresh token stored in cookies.
+     * Rotates refresh token and issues a new access token.
      *
-     * <p>The endpoint extracts the refresh token from the HTTP cookie,
-     * validates it, and issues a new access token along with a rotated
-     * refresh token. The new refresh token is returned as a secure
-     * HttpOnly cookie.</p>
+     * <p>HTTP POST /api/auth/refresh</p>
      *
-     * @param request the HTTP request containing cookies
-     * @param response the HTTP response used to update the refresh token cookie
-     * @return HTTP 200 response containing the new access token
-     * @throws InvalidCredentialsException if the refresh token is missing,
+     * <p>Extracts refresh token from cookies, validates it, issues a new
+     * access token, and replaces the refresh token cookie.</p>
+     *
+     * @param request HTTP request containing refresh token cookie
+     * @param response HTTP response used to update refresh token cookie
+     * @return HTTP 200 response containing newly issued access token
+     * @throws InvalidCredentialsException if refresh token is missing,
      *                                     invalid, or expired
      */
     @PostMapping("/refresh")
@@ -104,6 +117,7 @@ public class AuthController {
         }
 
         TokenPair tokenPair = userService.refreshAccessToken(token);
+
         response.addHeader("Set-Cookie",
                 "refresh_token=" + tokenPair.getRefreshToken()
                         + "; HttpOnly; Secure; Path=/; Max-Age=604800; SameSite=Strict");
@@ -112,14 +126,17 @@ public class AuthController {
     }
 
     /**
-     * Logs out the currently authenticated user.
+     * Logs out the authenticated user and revokes tokens.
      *
-     * <p>The endpoint revokes all refresh tokens associated with the user
-     * and clears the refresh token cookie from the client.</p>
+     * <p>HTTP POST /api/auth/logout</p>
      *
-     * @param request the HTTP request containing authentication information
-     * @param response the HTTP response used to remove the refresh token cookie
-     * @return HTTP 204 No Content when logout is successful
+     * <p>Revokes the current access token, deletes all refresh tokens
+     * associated with the user, and clears the refresh token cookie.</p>
+     *
+     * @param request HTTP request containing authorization header and cookies
+     * @param response HTTP response used to remove refresh token cookie
+     * @return HTTP 204 No Content when logout succeeds
+     * @throws InvalidCredentialsException if access token is missing or invalid
      */
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
@@ -138,9 +155,16 @@ public class AuthController {
         response.addHeader("Set-Cookie",
                 "refresh_token=; HttpOnly; Secure; Path=/; Max-Age=0; SameSite=Strict");
 
-        userService.logout(user);
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+
+            throw new InvalidCredentialsException("Access token missing!");
+        }
+        String accessToken = authHeader.substring(7);
+
+        userService.logout(accessToken, user);
 
         return ResponseEntity.noContent().build();
     }
-
 }
