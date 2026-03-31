@@ -18,6 +18,10 @@ import com.thanh.bookstore.repository.RefreshTokenRepository;
 import com.thanh.bookstore.repository.UserRepository;
 import com.thanh.bookstore.security.JwtService;
 import com.thanh.bookstore.service.model.TokenPair;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -89,6 +93,17 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User ID not found"));
+    }
+
+    /**
+     * Finds a user by their username.
+     * @param username unique username
+     * @return user entity
+     * @throws UserNotFoundException if the user does not exist
+     */
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     /**
@@ -177,7 +192,7 @@ public class UserService implements UserDetailsService {
      * @throws InvalidCredentialsException if token is missing or expired
      */
     public TokenPair refreshAccessToken(String token) {
-
+        try{
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new InvalidCredentialsException("Refresh token not found!"));
 
@@ -191,11 +206,16 @@ public class UserService implements UserDetailsService {
 
         String newAccessToken = jwtService.generateToken(user);
 
-        refreshTokenRepository.delete(refreshToken);
+        refreshTokenRepository.findById(refreshToken.getId())
+                .ifPresent(refreshTokenRepository::delete);
+            
         RefreshToken newRefreshToken = createRefreshToken(user);
 
-        return new TokenPair(newAccessToken, newRefreshToken.getToken());
-    }
+        return new TokenPair(newAccessToken, newRefreshToken.getToken(), user.getUsername(), user.getRole());
+    } catch (ObjectOptimisticLockingFailureException e) {
+            throw new InvalidCredentialsException("Refresh token already used!");
+        }
+}
 
     /**
      * Logs out a user by revoking authentication tokens.
@@ -206,6 +226,7 @@ public class UserService implements UserDetailsService {
      * @param accessToken active access token
      * @param user authenticated user
      */
+    @Transactional
     public void logout(String accessToken, User user) {
 
         blacklistToken(accessToken);
