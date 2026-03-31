@@ -16,7 +16,13 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * Service for generating and validating JWT tokens.
+ * Service responsible for issuing and validating JSON Web Tokens (JWT)
+ * used for authentication within the security layer.
+ *
+ * <p>Role: Security Service.</p>
+ *
+ * <p>Provides token generation, claim extraction, and validation
+ * supporting JWT-based authentication and authorization.</p>
  */
 @Service
 public class JwtService {
@@ -29,7 +35,15 @@ public class JwtService {
 
     private static final Logger log = LogManager.getLogger(JwtService.class);
 
-    /** Generates a JWT token for a given user through id. */
+    /**
+     * Generates an access token representing the authenticated user.
+     *
+     * <p>The token contains the user identifier as subject and assigned roles
+     * as claims, signed using the configured secret key.</p>
+     *
+     * @param user authenticated user entity
+     * @return signed JWT access token
+     */
     public String generateToken(User user) {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
@@ -40,7 +54,13 @@ public class JwtService {
                 .compact();
     }
 
-    /** Extracts the user id from a JWT token. */
+    /**
+     * Extracts the user identifier stored as the token subject.
+     *
+     * @param token JWT token
+     * @return user identifier contained in the token
+     * @throws JwtException if the token cannot be parsed or verified
+     */
     public String extractId(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -50,7 +70,32 @@ public class JwtService {
                 .getSubject();
     }
 
-    /** Checks whether a JWT token is still valid. */
+    /**
+     * Retrieves the expiration timestamp of the token.
+     *
+     * @param token JWT token
+     * @return token expiration date
+     * @throws JwtException if the token cannot be parsed or verified
+     */
+    public Date extractExpiration(String token) {
+
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getExpiration();
+    }
+
+    /**
+     * Validates token integrity and expiration status.
+     *
+     * <p>Returns {@code false} if the token is expired, malformed,
+     * or fails signature verification.</p>
+     *
+     * @param token JWT token
+     * @return {@code true} if token is valid and not expired; otherwise {@code false}
+     */
     public boolean isTokenValid(String token) {
         try {
             Date expiration = Jwts.parser()
@@ -70,7 +115,11 @@ public class JwtService {
         }
     }
 
-    /** Returns the secret key used to sign JWT tokens. */
+    /**
+     * Provides the cryptographic signing key used for JWT operations.
+     *
+     * @return HMAC signing key derived from configured secret
+     */
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
