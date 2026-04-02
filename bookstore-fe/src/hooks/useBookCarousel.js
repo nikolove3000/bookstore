@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-const useBookCarousel = (totalBooks) => {
+const useBookCarousel = (totalBooks, externalPause = false) => {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [slideAnimating, setSlideAnimating] = useState(false);
@@ -13,12 +13,10 @@ const useBookCarousel = (totalBooks) => {
   const coverAnimatingRef = useRef(false);
   const pauseTimerRef = useRef(null);
 
-  // sync currentRef
   useEffect(() => {
     currentRef.current = current;
   }, [current]);
 
-  // changeBook — slide logic
   const changeBook = (directionOrIndex) => {
     if (slideAnimatingRef.current || coverAnimatingRef.current) return;
 
@@ -29,10 +27,9 @@ const useBookCarousel = (totalBooks) => {
       newIndex = directionOrIndex;
     } else {
       setSlideDir(directionOrIndex);
-      newIndex =
-        directionOrIndex === "next"
-          ? (currentRef.current + 1) % totalBooks
-          : (currentRef.current - 1 + totalBooks) % totalBooks;
+      newIndex = directionOrIndex === "next"
+        ? (currentRef.current + 1) % totalBooks
+        : (currentRef.current - 1 + totalBooks) % totalBooks;
     }
 
     setSlideAnimating(true);
@@ -45,7 +42,6 @@ const useBookCarousel = (totalBooks) => {
     }, 400);
   };
 
-  // handleCoverClick — zoom logic, không trigger slide
   const handleCoverClick = () => {
     if (coverAnimatingRef.current || slideAnimatingRef.current) return;
 
@@ -57,16 +53,14 @@ const useBookCarousel = (totalBooks) => {
       setCurrent((currentRef.current + 1) % totalBooks);
       setCoverScale(1);
       setCoverOpacity(1);
-
       setTimeout(() => {
         coverAnimatingRef.current = false;
       }, 250);
     }, 250);
   };
 
-  // Auto-play
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || externalPause) return;
 
     const autoPlayTimer = setInterval(() => {
       if (slideAnimatingRef.current || coverAnimatingRef.current) return;
@@ -82,9 +76,8 @@ const useBookCarousel = (totalBooks) => {
     }, 5000);
 
     return () => clearInterval(autoPlayTimer);
-  }, [isPaused, totalBooks]);
+  }, [isPaused, externalPause, totalBooks]);
 
-  // Pause and reset
   const pauseAndReset = () => {
     setIsPaused(true);
     clearTimeout(pauseTimerRef.current);
@@ -94,16 +87,9 @@ const useBookCarousel = (totalBooks) => {
   };
 
   return {
-    current,
-    isPaused,
-    slideAnimating,
-    slideDir,
-    coverScale,
-    coverOpacity,
-    changeBook,
-    handleCoverClick,
-    pauseAndReset,
-    setIsPaused,
+    current, isPaused, slideAnimating, slideDir,
+    coverScale, coverOpacity,
+    changeBook, handleCoverClick, pauseAndReset, setIsPaused,
   };
 };
 

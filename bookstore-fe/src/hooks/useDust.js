@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 
-const useDust = (canvasId, color = "200,180,140") => {
+const useDust = (canvasRef, color = "200,180,140") => {
   useEffect(() => {
-    const canvas = document.getElementById(canvasId);
+    const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -49,7 +49,7 @@ const useDust = (canvasId, color = "200,180,140") => {
     animate();
 
     return () => cancelAnimationFrame(animId);
-  }, [canvasId, color]);
+  }, [canvasRef, color]);
 };
 
 export default useDust;

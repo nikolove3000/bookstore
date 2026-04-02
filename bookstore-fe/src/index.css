@@ -9,3 +9,11 @@
   font-family: 'Purgatorio Tilt';
   src: url('./assets/fonts/furgatorio-titling.ttf') format('truetype');
 }
+
+* {
+    outline: none;
+}
+
+canvas {
+    outline: none;
+}
