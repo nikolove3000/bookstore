@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'Purgatorio';
+  src: url('./assets/fonts/furgatorio.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Purgatorio Tilt';
+  src: url('./assets/fonts/furgatorio-titling.ttf') format('truetype');
+}
