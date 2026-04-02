@@ -1,22 +1,18 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import authApi from "../../api/authApi";
 import { books } from "../../data/books";
 import FloatingInput from "./FloatingInput";
-import useDust from "../../hooks/useDust";
 
-const LoginForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
+const LoginForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) => {
   const [form, setForm] = useState({ usernameOrEmail: "", password: "" });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const canvasRef = useRef(null);
-  useDust(canvasRef);
 
   const book = books[currentBook] ?? books[0];
-
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
@@ -37,7 +33,7 @@ const LoginForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
   return (
     <div className="flex flex-col items-center justify-center flex-1 relative"
       style={{ background: "#0f0d0d" }}>
-      <canvas ref={canvasRef} style={{
+      <canvas ref={dustRef} style={{
         position: "absolute", inset: 0,
         width: "100%", height: "100%",
         pointerEvents: "none", zIndex: 2

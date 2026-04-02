@@ -2,10 +2,8 @@ import { useState } from "react";
 import authApi from "../../api/authApi";
 import { books } from "../../data/books";
 import FloatingInput from "./FloatingInput";
-import { useRef } from "react";
-import useDust from "../../hooks/useDust";
 
-const RegisterForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
+const RegisterForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) => {
   const [form, setForm] = useState({
     username: "", email: "", fullName: "", password: "", confirmPassword: "",
     address: "", phone: "",
@@ -15,8 +13,6 @@ const RegisterForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
   const [loading, setLoading] = useState(false);
 
   const book = books[currentBook] ?? books[0];
-  const canvasRef = useRef(null);
-  useDust(canvasRef);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -44,12 +40,11 @@ const RegisterForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
     <div className="flex flex-col items-center justify-center flex-1 relative"
       style={{ background: "#0f0d0d", outline: "2px solid red" }}>
 
-      <canvas ref={canvasRef} style={{
+      <canvas ref={dustRef} style={{
         position: "absolute", inset: 0,
         width: "100%", height: "100%",
         pointerEvents: "none", zIndex: 2
       }} />
-
       <div style={{
         position: "absolute", inset: 0,
         backgroundImage: `url(${displayedBg})`,

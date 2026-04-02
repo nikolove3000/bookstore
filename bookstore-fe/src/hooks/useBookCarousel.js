@@ -60,7 +60,6 @@ const useBookCarousel = (totalBooks, externalPause = false) => {
   };
 
   useEffect(() => {
-     console.log("autoplay tick, isPaused:", isPaused, "externalPause:", externalPause);
     if (isPaused || externalPause) return;
 
     const autoPlayTimer = setInterval(() => {

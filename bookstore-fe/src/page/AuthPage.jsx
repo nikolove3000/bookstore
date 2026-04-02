@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { books } from "../data/books";
 import BookPanel from "../component/auth/BookPanel";
 import LoginForm from "../component/auth/LoginForm";
 import RegisterForm from "../component/auth/RegisterForm";
 import { useNavigate, useLocation } from "react-router-dom";
 import useBookCarousel from "../hooks/useBookCarousel";
+import useDust from "../hooks/useDust";
 
 const AuthPage = () => {
     const location = useLocation();
@@ -16,6 +17,20 @@ const AuthPage = () => {
     const carouselProps = useBookCarousel(12);
 
     const { current } = carouselProps;
+
+    const loginDustRef = useRef(null);
+    const registerDustRef = useRef(null);
+    const { accent } = books[current] ?? books[0];
+
+    function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `${r},${g},${b}`;
+    }
+
+    useDust(loginDustRef, hexToRgb(accent));
+    useDust(registerDustRef, hexToRgb(accent));
 
     const flipToRegister = () => {
         setIsFlipped(true);
@@ -81,7 +96,7 @@ const AuthPage = () => {
                         pointerEvents: isFlipped ? "none" : "auto",
                     }}>
                         <BookPanel carouselProps={carouselProps} dustCanvasId="dust-login" />
-                        <LoginForm {...sharedProps} onFlip={flipToRegister} />
+                        <LoginForm {...sharedProps} dustRef={loginDustRef} onFlip={flipToRegister} />
                     </div>
 
                     {/* BACK — Register */}
@@ -93,7 +108,7 @@ const AuthPage = () => {
                         display: "flex",
                         pointerEvents: isFlipped ? "auto" : "none",
                     }}>
-                        <RegisterForm {...sharedProps} onFlip={flipToLogin} />
+                        <RegisterForm {...sharedProps} dustRef={registerDustRef} onFlip={flipToLogin} />
                         <BookPanel carouselProps={carouselProps} dustCanvasId="dust-register" />
                     </div>
 
