@@ -4,6 +4,7 @@ import com.thanh.bookstore.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.time.LocalDateTime;
 
@@ -52,5 +53,21 @@ public class GlobalExceptionHandler {
                 401, "INVALID_CREDENTIALS", e.getMessage(), LocalDateTime.now()
         );
         return ResponseEntity.status(401).body(errorResponse);
+    }
+
+    /** Handles @Valid validation errors. */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException e) {
+        String errorMessage = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getDefaultMessage())
+                .findFirst()
+                .orElse("Validation error");
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                400, "VALIDATION_ERROR", errorMessage, LocalDateTime.now()
+        );
+        return ResponseEntity.status(400).body(errorResponse);
     }
 }
