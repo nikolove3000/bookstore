@@ -51,7 +51,7 @@ const RegisterForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) 
         backgroundSize: "cover", backgroundPosition: "center",
         opacity: bgOpacity, transition: "opacity 0.2s ease", zIndex: 0,
       }} />
-      <div style={{ position: "absolute", inset: 0, background: "rgba(8,4,4,0.55)", zIndex: 1 }} />
+      <div style={{ position: "absolute", inset: 0, background: "rgba(8,4,4,1)", zIndex: 1 }} />
 
       <div style={{ width: "100%", maxWidth: 320, position: "relative", zIndex: 3, padding: "2.5rem" }}>
         <p style={{
