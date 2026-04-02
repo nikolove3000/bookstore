@@ -52,7 +52,7 @@ const LoginForm = ({ currentBook, displayedBg, bgOpacity, onFlip }) => {
       }} />
       <div style={{ position: "absolute", inset: 0, background: "rgba(8,4,4,0.55)", zIndex: 1 }} />
 
-      <div style={{ width: "100%", maxWidth: 280, position: "relative", zIndex: 3, padding: "2.5rem" }}>
+      <div style={{ width: "100%", maxWidth: 320, position: "relative", zIndex: 3, padding: "2.5rem" }}>
         <p style={{
           fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: "normal",
           letterSpacing: "1px", color: "#c9a84c", textAlign: "center",
