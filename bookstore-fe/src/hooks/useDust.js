@@ -5,13 +5,11 @@ const useDust = (canvasRef, color = "200,180,140") => {
 
   useEffect(() => {
     colorRef.current = color;
-    console.log("colorRef updated to:", colorRef.current);
   }, [color]);
 
   useEffect(() => {
   const canvas = canvasRef.current;
   if (!canvas) return;
-  console.log("canvas init:", canvas.id || canvas.className, "color:", color);
   const ctx = canvas.getContext('2d');
   let particles = [];
   let W, H, animId;
@@ -56,7 +54,6 @@ const useDust = (canvasRef, color = "200,180,140") => {
     animId = requestAnimationFrame(animate);
   }
   animate();
-  console.log("animation started, colorRef:", colorRef.current);
 
   window.addEventListener('resize', resize);
   return () => {
