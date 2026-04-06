@@ -3,62 +3,69 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = [
-  { label: "Fiction",     sub: ["Literary Fiction", "Fantasy", "Sci-Fi", "Horror", "Romance"] },
+  { label: "Fiction", sub: ["Literary Fiction", "Fantasy", "Sci-Fi", "Horror", "Romance"] },
   { label: "Non-Fiction", sub: ["History", "Biography", "Science", "Philosophy", "Essays"] },
-  { label: "Poetry",      sub: ["Classical", "Modern", "Anthology", "Translated"] },
-  { label: "Philosophy",  sub: ["Ancient", "Modern", "Ethics", "Existentialism"] },
-  { label: "Art & Design",sub: ["Architecture", "Photography", "Illustration", "Typography"] },
+  { label: "Poetry", sub: ["Classical", "Modern", "Anthology", "Translated"] },
+  { label: "Philosophy", sub: ["Ancient", "Modern", "Ethics", "Existentialism"] },
+  { label: "Art & Design", sub: ["Architecture", "Photography", "Illustration", "Typography"] },
 ];
 
 /** Maps pathname → { num, label } */
 const FOLIO_MAP = [
   { match: /^\/$/, num: "Folio I", label: "Home" },
-  { match: /^\/fiction/, num: "Folio II", label: "Fiction" },
-  { match: /^\/non-fiction/, num: "Folio III", label: "Non-Fiction" },
-  { match: /^\/poetry/, num: "Folio IV", label: "Poetry" },
-  { match: /^\/philosophy/, num: "Folio V", label: "Philosophy" },
-  { match: /^\/art/, num: "Folio VI", label: "Art & Design" },
+  { match: /^\/books\/\d+/, num: "Folio ✦", label: "Book Detail" },
+  { match: /^\/books/, num: "Folio II", label: "Books" },
   { match: /^\/category/, num: "Folio ✦", label: "Browse" },
-  { match: /^\/book/, num: "Folio ✦", label: "Book" },
-  { match: /^\/cart/, num: "Folio VII", label: "Cart" },
-  { match: /^\/orders/, num: "Folio VIII", label: "Orders" },
-  { match: /^\/profile/, num: "Folio IX", label: "Profile" },
-  { match: /^\/wishlist/, num: "Folio X", label: "Wishlist" },
+  { match: /^\/search/, num: "Folio ✦", label: "Search" },
+  { match: /^\/cart/, num: "Folio III", label: "Cart" },
+  { match: /^\/orders\/\d+/, num: "Folio ✦", label: "Order Detail" },
+  { match: /^\/orders/, num: "Folio IV", label: "Orders" },
+  { match: /^\/profile/, num: "Folio V", label: "Profile" },
+  { match: /^\/wishlist/, num: "Folio VI", label: "Wishlist" },
 ];
 
 /** Bestseller ticker — replace with real API data */
 const TICKER_BOOKS = [
-  { title: "The Name of the Rose",         author: "Umberto Eco" },
-  { title: "Steppenwolf",                  author: "Hermann Hesse" },
-  { title: "Pedro Páramo",                 author: "Juan Rulfo" },
-  { title: "The Master and Margarita",     author: "Bulgakov" },
-  { title: "One Hundred Years of Solitude",author: "García Márquez" },
-  { title: "Nausea",                       author: "Jean-Paul Sartre" },
-  { title: "The Trial",                    author: "Franz Kafka" },
-  { title: "Ficciones",                    author: "Jorge Luis Borges" },
-  { title: "Beloved",                      author: "Toni Morrison" },
-  { title: "The Stranger",                 author: "Albert Camus" },
+  { title: "The Name of the Rose", author: "Umberto Eco" },
+  { title: "Steppenwolf", author: "Hermann Hesse" },
+  { title: "Pedro Páramo", author: "Juan Rulfo" },
+  { title: "The Master and Margarita", author: "Bulgakov" },
+  { title: "One Hundred Years of Solitude", author: "García Márquez" },
+  { title: "Nausea", author: "Jean-Paul Sartre" },
+  { title: "The Trial", author: "Franz Kafka" },
+  { title: "Ficciones", author: "Jorge Luis Borges" },
+  { title: "Beloved", author: "Toni Morrison" },
+  { title: "The Stranger", author: "Albert Camus" },
 ];
 
 function getFolio(pathname) {
   const hit = FOLIO_MAP.find(f => f.match.test(pathname));
-  return hit ?? { num: "Folio ✦", label: pathname.slice(1) || "Home" };
+  if (!hit) return { num: "Folio ✦", label: pathname.slice(1) || "Home" };
+
+  if (pathname.startsWith("/category/")) {
+    const slug = pathname.split("/")[2] ?? "Browse";
+    const label = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, " ");
+    return { num: "Folio ✦", label };
+  }
+
+  return hit;
 }
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [catOpen,    setCatOpen]    = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchVal,  setSearchVal]  = useState("");
-  const [cartPulse,  setCartPulse]  = useState(false);
+  const [searchVal, setSearchVal] = useState("");
+  const [cartPulse, setCartPulse] = useState(false);
 
+  console.log("location.pathname:", location.pathname, JSON.stringify(location.pathname));
   const folio = getFolio(location.pathname);
 
-  const catRef    = useRef(null);
+  const catRef = useRef(null);
   const avatarRef = useRef(null);
   const overlayInputRef = useRef(null);
 
@@ -67,7 +74,7 @@ export default function Navbar() {
   /* ── close dropdowns on outside click ── */
   useEffect(() => {
     const handler = (e) => {
-      if (catRef.current    && !catRef.current.contains(e.target))    setCatOpen(false);
+      if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false);
       if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -129,7 +136,7 @@ export default function Navbar() {
         /* logo */
         .nav-logo { text-decoration: none; line-height: 1; flex-shrink: 0; }
         .nav-logo-main { font-size: 17px; color: #c9a84c; letter-spacing: 1.5px; }
-        .nav-logo-sub  { font-size: 8px; color: rgba(201,168,76,0.3); letter-spacing: 4px;
+        .nav-logo-sub  { font-size: 8px; color: rgba(201,168,76,0.55); letter-spacing: 4px;
                          text-transform: uppercase; margin-top: 3px; }
 
         /* diamond divider */
@@ -154,7 +161,7 @@ export default function Navbar() {
           to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .nav-folio-num   { font-size: 15px; color: #c9a84c; letter-spacing: 3px; opacity: 0.9; }
-        .nav-folio-label { font-size: 8px; color: rgba(201,168,76,0.32);
+        .nav-folio-label { font-size: 8px; color: rgba(201,168,76,0.58);
                            letter-spacing: 4px; text-transform: uppercase; margin-top: 3px; }
 
         .nav-spacer { flex: 1; }
@@ -167,7 +174,7 @@ export default function Navbar() {
           background: none; border: none; cursor: pointer;
           padding: 6px 10px; border-radius: 4px;
           font-family: Georgia, serif; font-size: 10px;
-          color: rgba(201,168,76,0.45); letter-spacing: 2.5px;
+          color: rgba(201,168,76,0.72); letter-spacing: 2.5px;
           text-transform: uppercase;
           transition: color 0.2s, background 0.2s;
         }
@@ -177,13 +184,13 @@ export default function Navbar() {
         .nav-cat-chevron { transition: transform 0.25s; }
         .nav-cat-btn.open .nav-cat-chevron { transform: rotate(180deg); }
 
-        .nav-gem-div { font-size: 9px; color: rgba(201,168,76,0.22); padding: 0 8px; }
+        .nav-gem-div { font-size: 9px; color: rgba(201,168,76,0.45); padding: 0 8px; }
 
         .nav-icon-btn {
           width: 34px; height: 34px; border-radius: 4px;
           display: flex; align-items: center; justify-content: center;
           background: none; border: none; cursor: pointer;
-          color: rgba(201,168,76,0.42);
+          color: rgba(201,168,76,0.65);
           transition: color 0.2s, background 0.2s;
           position: relative;
         }
@@ -242,12 +249,12 @@ export default function Navbar() {
         }
 
         .nav-overlay-hint {
-          font-size: 9px; color: rgba(201,168,76,0.28);
+          font-size: 9px; color: rgba(201,168,76,0.55);
           letter-spacing: 2px; white-space: nowrap; font-style: italic;
         }
         .nav-overlay-close {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(201,168,76,0.38); border: 0.5px solid rgba(201,168,76,0.15);
+          color: rgba(201,168,76,0.65); border: 0.5px solid rgba(201,168,76,0.15);
           border-radius: 3px; padding: 5px 12px; background: none; cursor: pointer;
           font-family: Georgia, serif; white-space: nowrap;
           transition: color 0.2s, border-color 0.2s;
@@ -283,7 +290,7 @@ export default function Navbar() {
         }
         .nav-cat-col-gem { font-size: 9px; color: rgba(201,168,76,0.45); }
         .nav-cat-sub {
-          font-size: 11px; color: rgba(255,245,230,0.3);
+          font-size: 11px; color: rgba(255,245,230,0.80);
           font-style: italic; padding: 3px 0; letter-spacing: 0.5px;
           transition: color 0.15s, padding-left 0.15s;
         }
@@ -303,13 +310,13 @@ export default function Navbar() {
           margin-bottom: 0.25rem;
         }
         .nav-avatar-name { font-size: 13px; color: rgba(255,245,230,0.8); letter-spacing: 0.5px; }
-        .nav-avatar-role { font-size: 9px; color: rgba(201,168,76,0.35);
+        .nav-avatar-role { font-size: 9px; color: rgba(201,168,76,0.60);
                            letter-spacing: 3px; text-transform: uppercase;
                            margin-top: 2px; font-style: italic; }
         .nav-avatar-item {
           display: flex; align-items: center; gap: 9px;
           padding: 0.5rem 1rem; font-size: 12px;
-          color: rgba(255,245,230,0.4); letter-spacing: 0.5px;
+          color: rgba(255,245,230,0.70); letter-spacing: 0.5px;
           cursor: pointer; transition: color 0.15s, background 0.15s;
           background: none; border: none; width: 100%;
           text-align: left; font-family: Georgia, serif; text-decoration: none;
@@ -359,9 +366,9 @@ export default function Navbar() {
           display: inline-flex; align-items: center; gap: 9px;
           padding: 0 16px;
         }
-        .nav-ticker-title  { font-size: 10px; color: rgba(255,245,230,0.38); font-style: italic; letter-spacing: 0.5px; }
-        .nav-ticker-author { font-size: 9px; color: rgba(201,168,76,0.35); letter-spacing: 1px; }
-        .nav-ticker-gem    { font-size: 8px; color: rgba(201,168,76,0.18); }
+        .nav-ticker-title  { font-size: 10px; color: rgba(255,245,230,0.68); font-style: italic; letter-spacing: 0.5px; }
+        .nav-ticker-author { font-size: 9px; color: rgba(201,168,76,0.62); letter-spacing: 1px; }
+        .nav-ticker-gem    { font-size: 8px; color: rgba(201,168,76,0.40); }
       `}</style>
 
       <div className="navbar-root">
