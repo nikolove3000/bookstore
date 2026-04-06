@@ -44,6 +44,14 @@ public class Book {
     @Column(name = "stock_quantity")
     private Integer stockQuantity;
 
+    /** URL of the book's cover image. */
+    @Column(name = "cover_url")
+    private String coverUrl;
+
+    /** Year when the book was published. */
+    @Column(name = "publication_year")
+    private Integer publicationYear;
+
     /** Author of the book. */
     @ManyToOne
     @JoinColumn(name = "author_id")
