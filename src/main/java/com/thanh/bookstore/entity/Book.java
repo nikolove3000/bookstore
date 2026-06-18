@@ -1,15 +1,28 @@
 package com.thanh.bookstore.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Entity representing a book in the bookstore system.
@@ -22,55 +35,79 @@ import java.util.Set;
 @Setter
 public class Book {
 
-    /** Unique identifier of the book. */
+    /**
+     * Unique identifier of the book.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    /** Title of the book. */
+    /**
+     * Title of the book.
+     */
     @Column(name = "title")
     private String title;
 
-    /** ISBN code used to identify the book edition. */
+    /**
+     * ISBN code used to identify the book edition.
+     */
     @Column(name = "isbn")
     private String isbn;
 
-    /** Selling price of the book. */
-    @Column(name = "price")
-    private Double price;
+    /**
+     * Selling price of the book.
+     */
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 
-    /** Number of books available in stock. */
+    /**
+     * Number of books available in stock.
+     */
     @Column(name = "stock_quantity")
     private Integer stockQuantity;
 
-    /** URL of the book's cover image. */
+    /**
+     * URL of the book's cover image.
+     */
     @Column(name = "cover_url")
     private String coverUrl;
 
-    /** Year when the book was published. */
+    /**
+     * Year when the book was published.
+     */
     @Column(name = "publication_year")
     private Integer publicationYear;
 
-    /** Author of the book. */
+    /**
+     * Author of the book.
+     */
     @ManyToOne
     @JoinColumn(name = "author_id")
     private Author author;
 
-    /** Publisher of the book. */
+    /**
+     * Publisher of the book.
+     */
     @ManyToOne
     @JoinColumn(name = "publisher_id")
     private Publisher publisher;
 
-    /** Description or summary of the book. */
+    /**
+     * Description or summary of the book.
+     */
     @Column(name = "description")
     private String description;
 
-    /** Timestamp when the book record was created. */
+    /**
+     * Timestamp when the book record was created.
+     */
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    /** Categories associated with this book. */
+    /**
+     * Categories associated with this book.
+     */
     @ManyToMany
     @JoinTable(
             name = "book_categories",
@@ -79,19 +116,27 @@ public class Book {
     )
     private Set<Category> categories = new HashSet<>();
 
-    /** Price history records of this book. */
+    /**
+     * Price history records of this book.
+     */
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PriceHistory> priceHistories = new ArrayList<>();
 
-    /** Order items containing this book. */
+    /**
+     * Order items containing this book.
+     */
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    /** Cart items containing this book. */
+    /**
+     * Cart items containing this book.
+     */
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems;
 
-    /** Reviews written for this book. */
+    /**
+     * Reviews written for this book.
+     */
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews;
 }

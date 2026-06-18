@@ -1,5 +1,16 @@
 package com.thanh.bookstore.service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.UUID;
+
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.thanh.bookstore.dto.LoginRequest;
 import com.thanh.bookstore.dto.LoginResponse;
 import com.thanh.bookstore.dto.RegisterRequest;
@@ -12,25 +23,14 @@ import com.thanh.bookstore.exception.DuplicateEmailException;
 import com.thanh.bookstore.exception.DuplicateUsernameException;
 import com.thanh.bookstore.exception.InvalidCredentialsException;
 import com.thanh.bookstore.exception.UserNotFoundException;
-import com.thanh.bookstore.repository.TokenBlacklistRepository;
-import com.thanh.bookstore.service.model.LoginResult;
 import com.thanh.bookstore.repository.RefreshTokenRepository;
+import com.thanh.bookstore.repository.TokenBlacklistRepository;
 import com.thanh.bookstore.repository.UserRepository;
 import com.thanh.bookstore.security.JwtService;
+import com.thanh.bookstore.service.model.LoginResult;
 import com.thanh.bookstore.service.model.TokenPair;
 
 import jakarta.transaction.Transactional;
-
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
-import java.util.UUID;
 
 /**
  * Service responsible for user account management and authentication workflows.
