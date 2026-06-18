@@ -1,12 +1,14 @@
 package com.thanh.bookstore.controller;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import com.thanh.bookstore.service.AuthorService;
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.thanh.bookstore.dto.AuthorDto;
+import com.thanh.bookstore.service.AuthorService;
 
 /** Controller for managing author-related endpoints. */
 @RestController
@@ -23,6 +25,7 @@ public class AuthorController {
      * Retrieves a list of all authors along with the count of books they have written.
      * @return
      */
+    @GetMapping
     public ResponseEntity<List<AuthorDto>> getAllAuthors() {
         return ResponseEntity.ok(authorService.getAllAuthors());
     }
