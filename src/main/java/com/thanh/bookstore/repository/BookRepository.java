@@ -1,18 +1,23 @@
 package com.thanh.bookstore.repository;
 
-import com.thanh.bookstore.entity.Book;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import com.thanh.bookstore.entity.Book;
 
 /**
  * Repository for Book entity.
  */
 @Repository
-public interface BookRepository extends JpaRepository<Book, Long> {
+public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificationExecutor<Book> {
 
     /**
      * Searches books by keyword across title, author name, and description.
@@ -71,6 +76,24 @@ public interface BookRepository extends JpaRepository<Book, Long> {
         ) DESC
         """)
     Page<Book> findFeatured(Pageable pageable);
+
+    /**
+     * Returns books sharing any of the given categories, excluding one book.
+     * Used to surface "related books" on the book detail page.
+     *
+     * @param categoryIds category IDs to match against
+     * @param excludeId   book ID to exclude from results (the book being viewed)
+     * @param pageable    limits the number of results returned
+     */
+    @Query("""
+        SELECT DISTINCT b FROM Book b
+        JOIN b.categories c
+        WHERE c.id IN :categoryIds AND b.id <> :excludeId
+        ORDER BY b.createdAt DESC
+        """)
+    List<Book> findRelatedBooks(@Param("categoryIds") Set<Long> categoryIds,
+                                 @Param("excludeId") Long excludeId,
+                                 Pageable pageable);
 
     /**
      * Returns the average rating of a book.

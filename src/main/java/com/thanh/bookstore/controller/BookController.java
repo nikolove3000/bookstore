@@ -1,5 +1,6 @@
 package com.thanh.bookstore.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.thanh.bookstore.dto.BookDetailDto;
 import com.thanh.bookstore.dto.BookSummaryDto;
+import com.thanh.bookstore.dto.ReviewSummaryDto;
 import com.thanh.bookstore.service.BookService;
 
 /**
@@ -31,12 +33,17 @@ public class BookController {
 
     /**
      * GET /api/books
-     * Returns a paginated list of all books.
+     * Returns a paginated list of books, optionally filtered by keyword,
+     * category, and price range. Powers the Book List page.
      */
     @GetMapping
     public ResponseEntity<Page<BookSummaryDto>> getAllBooks(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(bookService.getAllBooks(pageable));
+        return ResponseEntity.ok(bookService.getAllBooks(q, categoryId, minPrice, maxPrice, pageable));
     }
 
     /**
@@ -46,6 +53,28 @@ public class BookController {
     @GetMapping("/{id}")
     public ResponseEntity<BookDetailDto> getBookById(@PathVariable Long id) {
         return ResponseEntity.ok(bookService.getBookById(id));
+    }
+
+    /**
+     * GET /api/books/{id}/related?limit=4
+     * Returns books related to this one by shared category.
+     */
+    @GetMapping("/{id}/related")
+    public ResponseEntity<List<BookSummaryDto>> getRelatedBooks(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "4") int limit) {
+        return ResponseEntity.ok(bookService.getRelatedBooks(id, limit));
+    }
+
+    /**
+     * GET /api/books/{id}/reviews
+     * Returns paginated reviews for this book, most recent first.
+     */
+    @GetMapping("/{id}/reviews")
+    public ResponseEntity<Page<ReviewSummaryDto>> getBookReviews(
+            @PathVariable Long id,
+            @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(bookService.getBookReviews(id, pageable));
     }
 
     /**
