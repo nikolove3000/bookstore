@@ -1,54 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import bookApi from "../api/bookApi";
+import categoryApi from "../api/categoryApi";
 
-/* ─── Data ─── */
-const FEATURED = [
-  {
-    id: 1, title: "The Name of the Rose", author: "Umberto Eco", price: 18.5,
-    cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1631674771i/119073.jpg",
-    accent: "#8B5E3C", tag: "Literary Fiction",
-    quote: "Books are not made to be believed, but to be subjected to inquiry.",
-    src: "Umberto Eco, 1980",
-  },
-  {
-    id: 2, title: "Piranesi", author: "Susanna Clarke", price: 15.99,
-    cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1609095173i/50202953.jpg",
-    accent: "#4A6B8A", tag: "Fantasy",
-    quote: "The Beauty of the House is immeasurable; its Kindness infinite.",
-    src: "Susanna Clarke, 2020",
-  },
-  {
-    id: 3, title: "House of Leaves", author: "Mark Z. Danielewski", price: 22.0,
-    cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1327867265i/24800.jpg",
-    accent: "#6B3A5A", tag: "Horror",
-    quote: "This is not for you.",
-    src: "Mark Z. Danielewski, 2000",
-  },
-];
+/* ─── Static accent/quote map ─── */
+const BOOK_META = {
+  "The Name of the Rose": { accent: "#8B5E3C", quote: "Books are not made to be believed, but to be subjected to inquiry.", src: "Umberto Eco, 1980" },
+  "Piranesi": { accent: "#4A6B8A", quote: "The Beauty of the House is immeasurable; its Kindness infinite.", src: "Susanna Clarke, 2020" },
+  "House of Leaves": { accent: "#6B3A5A", quote: "This is not for you.", src: "Mark Z. Danielewski, 2000" },
+};
+const DEFAULT_META = { accent: "#c9a84c", quote: "", src: "" };
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-const NEW_ARRIVALS = [
-  {
-    id: 4, title: "Orbital", author: "Samantha Harvey", price: 19.99,
-    cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1695657986i/195790911.jpg",
-    tag: "Literary", featured: true,
-    description: "Sixteen astronauts orbit Earth — watching, drifting, wondering what it means to be human from 250 miles above.",
-  },
-  { id: 5, title: "James", author: "Percival Everett", price: 17.5, cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1703790906i/210181088.jpg", tag: "Historical" },
-  { id: 6, title: "The Women", author: "Kristin Hannah", price: 16.99, cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1700596476i/127305853.jpg", tag: "Historical Fiction", isNew: true },
-  { id: 7, title: "All Fours", author: "Miranda July", price: 18.0, cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1706735296i/199349337.jpg", tag: "Literary Fiction" },
-  { id: 8, title: "Intermezzo", author: "Sally Rooney", price: 15.99, cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1716828737i/210811459.jpg", tag: "Contemporary", isNew: true },
-  { id: 9, title: "The God of the Woods", author: "Liz Moore", price: 17.0, cover: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1701276893i/171456813.jpg", tag: "Mystery" },
-];
-
-const GENRES = [
-  { name: "Fiction", count: 2847, slug: "fiction", roman: "I" },
-  { name: "Poetry", count: 412, slug: "poetry", roman: "II" },
-  { name: "History", count: 1193, slug: "history", roman: "III" },
-  { name: "Philosophy", count: 631, slug: "philosophy", roman: "IV" },
-  { name: "Art", count: 534, slug: "art", roman: "V" },
-];
-
-/* ─── Intersection observer ─── */
+/* ─── Intersection observer ───
+   Dùng CSS @keyframes (animation) thay cho inline-style opacity transition
+   để tránh bug compositing của Chromium/Edge khi container chứa <img>. */
 function useReveal(threshold = 0.08) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -88,91 +54,201 @@ function Divider({ accent = "#c9a84c", label }) {
   );
 }
 
-/* ─── Book Card ─── */
-function BookCard({ book, index, visible }) {
+/* ─── PileImage — ảnh trong Editorial Banner, có fallback khi lỗi ─── */
+function PileImage({ src, title }) {
+  const [error, setError] = useState(false);
+  if (error || !src) {
+    return (
+      <div style={{
+        position: "absolute", width: 155, height: 220,
+        background: "#0F1720", border: "0.5px solid rgba(201,168,76,0.15)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 9, color: "rgba(201,168,76,0.3)", fontFamily: "Georgia,serif",
+      }}>✦</div>
+    );
+  }
+  return <img src={src} alt={title || ""} onError={() => setError(true)} />;
+}
+
+/* ─── Shelf Book (New Arrivals) ─── */
+const ROMANS = ["I", "II", "III", "IV", "V", "VI"];
+
+function ShelfBook({ book, index }) {
   const [hovered, setHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const w = book.featured ? 195 : 165;
+  const h = book.featured ? 288 : 244;
+
   return (
     <div
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(18px)",
-        transition: `opacity 0.5s ease ${index * 65}ms, transform 0.5s ease ${index * 65}ms`,
-        cursor: "pointer",
-      }}
+      style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, position: "relative" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{
-        position: "relative", overflow: "hidden", aspectRatio: "2/3",
-        background: "#0a0808", marginBottom: 10,
-        border: `0.5px solid ${hovered ? "rgba(201,168,76,0.3)" : "rgba(201,168,76,0.1)"}`,
-        transition: "border-color 0.3s",
-      }}>
-        {/* corner dots */}
-        {[{ top: 4, left: 4 }, { top: 4, right: 4 }, { bottom: 4, left: 4 }, { bottom: 4, right: 4 }].map((s, i) => (
-          <span key={i} style={{ position: "absolute", ...s, fontSize: 7, color: "rgba(201,168,76,0.4)", opacity: hovered ? 0.8 : 0.25, transition: "opacity 0.3s", fontFamily: "Georgia,serif" }}>◆</span>
-        ))}
-        <img src={book.cover} alt={book.title} style={{
-          width: "100%", height: "100%", objectFit: "cover", display: "block",
-          transform: hovered ? "scale(1.04)" : "scale(1)", transition: "transform 0.45s ease",
-        }} />
-        {/* hover overlay */}
-        <div style={{
-          position: "absolute", inset: 0, background: "rgba(4,2,2,0.82)",
-          display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 14,
-          opacity: hovered ? 1 : 0, transition: "opacity 0.3s",
-        }}>
-          <button style={{
-            background: "#1a0808", border: "0.5px solid #8b2020", padding: "7px 16px",
-            fontFamily: "Georgia,serif", fontSize: 9, letterSpacing: "3px", color: "#c0392b",
-            textTransform: "uppercase", cursor: "pointer",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "#c9a84c"; e.currentTarget.style.color = "#c9a84c"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "#8b2020"; e.currentTarget.style.color = "#c0392b"; }}
-          >Add to Cart</button>
-        </div>
-        <span style={{
-          position: "absolute", top: 6, left: 6, fontSize: 7, letterSpacing: "2px",
-          textTransform: "uppercase", color: "rgba(201,168,76,0.6)",
-          background: "rgba(4,2,2,0.88)", padding: "2px 6px",
-          border: "0.5px solid rgba(201,168,76,0.12)", fontFamily: "Georgia,serif",
-        }}>{book.tag}</span>
+      <div style={{ position: "relative" }}>
+        {imgError ? (
+          /* ── fallback khi ảnh lỗi/không load được ── */
+          <div style={{
+            width: w, height: h, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 10,
+            background: "linear-gradient(160deg, #14171c 0%, #0c0a0a 100%)",
+            border: book.featured ? "0.5px solid rgba(201,168,76,0.4)" : "0.5px solid rgba(201,168,76,0.18)",
+            boxShadow: hovered
+              ? "-4px 16px 24px rgba(0,0,0,0.6), -3px 3px 0 0.5px rgba(201,168,76,0.25)"
+              : "-3px 3px 0 rgba(0,0,0,0.55), -3px 3px 0 0.5px rgba(201,168,76,0.06)",
+            transform: hovered ? "translateY(-14px) rotate(-1.5deg)" : "translateY(0) rotate(0)",
+            transition: "transform 0.32s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.32s ease",
+            padding: "0 14px",
+          }}>
+            <span style={{ fontSize: 18, color: "rgba(201,168,76,0.35)" }}>✦</span>
+            <span style={{
+              fontSize: 11, color: "rgba(255,245,230,0.5)", letterSpacing: "0.5px",
+              textAlign: "center", lineHeight: 1.4, fontFamily: "Georgia,serif", fontStyle: "italic",
+            }}>{book.title}</span>
+            <span style={{
+              fontSize: 8, color: "rgba(201,168,76,0.3)", letterSpacing: "2px",
+              textTransform: "uppercase", fontFamily: "Georgia,serif",
+            }}>No Cover</span>
+          </div>
+        ) : (
+          <img
+            src={book.cover} alt={book.title}
+            onError={() => setImgError(true)}
+            style={{
+              width: w, height: h, objectFit: "cover", display: "block",
+              willChange: "transform",
+              backfaceVisibility: "hidden",
+              transform: hovered
+                ? "translateY(-14px) rotate(-1.5deg) translateZ(0)"
+                : "translateY(0) rotate(0) translateZ(0)",
+              border: book.featured ? "0.5px solid rgba(201,168,76,0.4)" : "0.5px solid rgba(201,168,76,0.18)",
+              boxShadow: hovered
+                ? "-4px 16px 24px rgba(0,0,0,0.6), -3px 3px 0 0.5px rgba(201,168,76,0.25)"
+                : book.featured
+                  ? "-3px 3px 0 rgba(0,0,0,0.6), 0 0 18px rgba(201,168,76,0.1)"
+                  : "-3px 3px 0 rgba(0,0,0,0.55), -3px 3px 0 0.5px rgba(201,168,76,0.06)",
+              transition: "transform 0.32s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.32s ease",
+            }}
+          />
+        )}
+
+        {book.featured && (
+          <div style={{
+            position: "absolute", top: -9, right: -9, width: 22, height: 22,
+            background: "#0d0b0b", border: "0.5px solid rgba(201,168,76,0.5)", borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, color: "#c9a84c", zIndex: 3,
+          }}>✦</div>
+        )}
+
+        {book.isNew && (
+          <div style={{
+            position: "absolute", bottom: 6, right: 6, width: 6, height: 6, borderRadius: "50%",
+            background: "#c9a84c", boxShadow: "0 0 6px rgba(201,168,76,0.6)",
+          }} />
+        )}
       </div>
-      <div style={{ fontSize: 12, color: "rgba(255,245,230,0.78)", lineHeight: 1.3, marginBottom: 3, fontFamily: "Georgia,serif" }}>{book.title}</div>
-      <div style={{ fontSize: 11, fontStyle: "italic", color: "rgba(201,168,76,0.42)", marginBottom: 4, fontFamily: "Georgia,serif" }}>{book.author}</div>
-      <div style={{ fontSize: 11, color: "rgba(201,168,76,0.58)", letterSpacing: "1px", fontFamily: "Georgia,serif" }}>${book.price.toFixed(2)}</div>
+
+      <span style={{
+        position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)",
+        fontSize: 8, color: "rgba(201,168,76,0.3)", letterSpacing: "2px",
+        opacity: hovered ? 0 : 1, transition: "opacity 0.3s ease", fontFamily: "Georgia,serif",
+      }}>{ROMANS[index]}</span>
+
+      <div style={{
+        marginTop: 12, textAlign: "center", width: 160, minHeight: 64,
+        opacity: hovered ? 1 : 0, transform: hovered ? "translateY(0)" : "translateY(-4px)",
+        transition: "opacity 0.3s ease, transform 0.3s ease",
+      }}>
+        <div style={{
+          fontSize: 8, letterSpacing: "2px", textTransform: "uppercase",
+          color: "rgba(201,168,76,0.5)", marginBottom: 4, fontFamily: "Georgia,serif", fontStyle: "italic",
+        }}>{book.tag}</div>
+
+        <div style={{
+          fontSize: 14, color: "rgba(255,245,230,0.8)", lineHeight: 1.3, marginBottom: 4, fontFamily: "Georgia,serif",
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>{book.title}</div>
+        <div style={{ fontSize: 10, fontStyle: "italic", color: "rgba(201,168,76,0.5)", marginBottom: 5, fontFamily: "Georgia,serif" }}>{book.author}</div>
+        <div style={{ fontSize: 11, color: "rgba(201,168,76,0.68)", letterSpacing: "0.5px", fontFamily: "Georgia,serif" }}>${book.price.toFixed(2)}</div>
+      </div>
     </div>
   );
 }
 
 /* ─── Main ─── */
 export default function HomePage() {
+  const [featured, setFeatured] = useState([]);
+  const [newArrivals, setNewArrivals] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [heroIdx, setHeroIdx] = useState(0);
   const [textAnim, setTextAnim] = useState(true);
   const [manualPick, setManualPick] = useState(false);
-  const [arrivalsRef, arrivalsVisible] = useReveal(0.04);
+
+  /* ── reveal-on-scroll refs (CSS animation, không dùng inline opacity) ── */
   const [genresRef, genresVisible] = useReveal(0.05);
+  const [arrivalsRef, arrivalsVisible] = useReveal(0.04);
   const [bannerRef, bannerVisible] = useReveal(0.08);
 
-  const current = FEATURED[heroIdx];
+  /* ── fetch data từ backend ── */
+  useEffect(() => {
+    Promise.all([
+      bookApi.getFeatured(3),
+      bookApi.getNewArrivals(6),
+      categoryApi.getAll(),
+    ]).then(([featRes, arrRes, catRes]) => {
+      setFeatured(featRes.data.map(b => ({
+        ...b,
+        author: b.authorName,
+        cover: b.coverUrl,
+        price: parseFloat(b.price),
+        tag: b.category || "Fiction",
+        ...(BOOK_META[b.title] ?? DEFAULT_META),
+      })));
+      setNewArrivals(arrRes.data.map((b, i) => ({
+        ...b,
+        author: b.authorName,
+        cover: b.coverUrl,
+        price: parseFloat(b.price),
+        tag: b.category || "Fiction",
+        featured: i === 0,
+        isNew: i < 2,
+      })));
+      setGenres(catRes.data.map((c, i) => ({
+        ...c,
+        slug: c.name.toLowerCase().replace(/\s+/g, "-"),
+        roman: ROMAN[i] ?? String(i + 1),
+        count: c.bookCount ?? 0,
+      })));
+    }).catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-  /* auto-advance, pauses after manual pick */
+  const current = featured[heroIdx] ?? DEFAULT_META;
+
+  /* ── auto-advance hero ── */
   const switchHero = useCallback((i) => {
-    if (i === heroIdx) return;
+    if (i === heroIdx || featured.length === 0) return;
     setTextAnim(false);
     setTimeout(() => { setHeroIdx(i); setTextAnim(true); }, 280);
-  }, [heroIdx]);
+  }, [heroIdx, featured.length]);
 
   useEffect(() => {
-    if (manualPick) return;
-    const t = setInterval(() => switchHero((heroIdx + 1) % FEATURED.length), 6000);
+    if (manualPick || featured.length === 0) return;
+    const t = setInterval(() => switchHero((heroIdx + 1) % featured.length), 6000);
     return () => clearInterval(t);
-  }, [heroIdx, manualPick, switchHero]);
+  }, [heroIdx, manualPick, switchHero, featured.length]);
 
-  const pickHero = (i) => {
-    setManualPick(true);
-    switchHero(i);
-  };
+  const pickHero = (i) => { setManualPick(true); switchHero(i); };
+
+  /* ── loading state ── */
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0d0b0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ fontSize: 11, letterSpacing: "3px", color: "rgba(201,168,76,0.35)", fontFamily: "Georgia,serif", textTransform: "uppercase" }}>✦ &nbsp;Loading&nbsp; ✦</span>
+    </div>
+  );
 
   return (
     <>
@@ -220,7 +296,7 @@ export default function HomePage() {
         .hp-banner-text{padding:5rem 3rem;border-right:0.5px solid rgba(201,168,76,0.08);}
         .hp-banner-visual{padding:4rem 3rem;display:flex;align-items:center;justify-content:center;}
         .hp-pile{position:relative;width:240px;height:300px;}
-        .hp-pile img{position:absolute;width:155px;height:220px;object-fit:cover;border:0.5px solid rgba(201,168,76,0.12);box-shadow:0 8px 28px rgba(0,0,0,0.7);transition:transform 0.4s ease;}
+        .hp-pile img{position:absolute;width:155px;height:220px;object-fit:cover;border:0.5px solid rgba(201,168,76,0.12);box-shadow:0 8px 28px rgba(0,0,0,0.7);transition:transform 0.4s ease;will-change:transform;backface-visibility:hidden;}
         .hp-pile img:nth-child(1){top:0;left:40px;transform:rotate(-5deg);z-index:1;}
         .hp-pile img:nth-child(2){top:22px;left:0;transform:rotate(-1deg);z-index:2;}
         .hp-pile img:nth-child(3){top:50px;left:58px;transform:rotate(7deg);z-index:3;}
@@ -267,6 +343,20 @@ export default function HomePage() {
         .hp-footer-social{display:flex;align-items:center;gap:14px;}
         .hp-footer-social-link{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.25);cursor:pointer;transition:color 0.2s;text-decoration:none;}
         .hp-footer-social-link:hover{color:rgba(201,168,76,0.55);}
+        .hp-shelf{position:relative;padding-top:1.5rem;}
+        .hp-shelf-row{display:flex;align-items:flex-end;gap:20px;padding-bottom:36px;justify-content:space-between;flex-wrap:nowrap;width:100%;}
+        .hp-shelf-wood{position:relative;height:14px;margin-top:8px;background:linear-gradient(to bottom, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 30%, transparent 100%);border-top:0.5px solid rgba(201,168,76,0.25);}
+        .hp-shelf-wood::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg, transparent, rgba(201,168,76,0.4) 50%, transparent);}
+        .hp-shelf-ends{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;}
+
+        /* ── Reveal-on-scroll: dùng @keyframes thay inline opacity transition,
+             tránh bug compositing Chromium khi container chứa <img> ── */
+        .hp-reveal{opacity:0;}
+        .hp-reveal.hp-reveal-in{animation:hpRevealIn 0.6s ease forwards;}
+        @keyframes hpRevealIn{
+          from{opacity:0;transform:translateY(14px);}
+          to{opacity:1;transform:translateY(0);}
+        }
       `}</style>
 
       <div className="hp-root">
@@ -343,7 +433,7 @@ export default function HomePage() {
 
             {/* book thumbnails as navigation — always visible */}
             <div className="hp-book-row">
-              {FEATURED.map((book, i) => (
+              {featured.map((book, i) => (
                 <div
                   key={book.id}
                   className={`hp-book-item ${i === heroIdx ? "active" : ""}`}
@@ -363,10 +453,12 @@ export default function HomePage() {
         </section>
 
         {/* ══ GENRE BAND ══ */}
-        <div ref={genresRef} className="hp-genre-band"
-          style={{ opacity: genresVisible ? 1 : 0, transform: genresVisible ? "translateY(0)" : "translateY(14px)", transition: "opacity 0.6s ease,transform 0.6s ease" }}>
+        <div
+          ref={genresRef}
+          className={`hp-genre-band hp-reveal ${genresVisible ? "hp-reveal-in" : ""}`}
+        >
           <div className="hp-genre-grid">
-            {GENRES.map(g => (
+            {genres.map(g => (
               <Link key={g.name} to={`/category/${g.slug}`} className="hp-genre-item">
                 <div className="hp-genre-main">
                   <div className="hp-genre-roman">{g.roman}</div>
@@ -396,80 +488,29 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div ref={arrivalsRef} className="hp-arrivals-layout"
-            style={{ opacity: arrivalsVisible ? 1 : 0, transform: arrivalsVisible ? "translateY(0)" : "translateY(18px)", transition: "opacity 0.6s ease, transform 0.6s ease" }}>
-
-            {/* ── FEATURED CARD ── */}
-            {(() => {
-              const feat = NEW_ARRIVALS.find(b => b.featured);
-              return feat ? (
-                <Link to={`/books/${feat.id}`} className="hp-feat" style={{ textDecoration: "none" }}>
-                  <span style={{ position: "absolute", top: 8, left: 8, fontSize: 11, color: "rgba(201,168,76,0.28)", fontFamily: "Georgia,serif", zIndex: 3 }}>✦</span>
-                  <span style={{ position: "absolute", top: 8, right: 8, fontSize: 11, color: "rgba(201,168,76,0.28)", fontFamily: "Georgia,serif", zIndex: 3 }}>✦</span>
-
-                  <div className="hp-feat-img-wrap">
-                    <img className="hp-feat-cover" src={feat.cover} alt={feat.title} />
-                    <div className="hp-feat-overlay" />
-                    <div className="hp-feat-tag">{feat.tag}</div>
-                    <div className="hp-feat-badge">◆ &nbsp;Featured</div>
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "1rem 1.2rem 0.4rem", zIndex: 2 }}>
-                      <div style={{ fontSize: 9, letterSpacing: "2px", textTransform: "uppercase", color: "rgba(201,168,76,0.45)", marginBottom: 4, fontFamily: "Georgia,serif", fontStyle: "italic" }}>New Arrival</div>
-                      <div style={{ fontSize: 20, fontWeight: "normal", color: "rgba(255,245,230,0.92)", fontFamily: "Georgia,serif", lineHeight: 1.15, letterSpacing: "0.3px" }}>{feat.title}</div>
-                      <div style={{ fontSize: 12, fontStyle: "italic", color: "rgba(201,168,76,0.55)", marginTop: 3, fontFamily: "Georgia,serif" }}>{feat.author}</div>
-                    </div>
-                  </div>
-
-                  <div className="hp-feat-body">
-                    <div className="hp-feat-ornament">
-                      <div className="hp-feat-ornament-line" />
-                      <span style={{ fontSize: 10, color: "rgba(201,168,76,0.3)", fontFamily: "Georgia,serif" }}>✦</span>
-                      <div className="hp-feat-ornament-line" />
-                    </div>
-                    <p style={{ fontSize: 12, fontStyle: "italic", color: "rgba(255,245,230,0.35)", lineHeight: 1.75, marginBottom: 14, fontFamily: "Georgia,serif" }}>
-                      {feat.description}
-                    </p>
-                    <div style={{ height: "0.5px", background: "rgba(201,168,76,0.08)", marginBottom: 14 }} />
-                    <div className="hp-feat-footer">
-                      <span className="hp-feat-price">${feat.price.toFixed(2)}</span>
-                      <button
-                        className="hp-feat-btn"
-                        onClick={e => { e.preventDefault(); /* addToCart(feat.id) */ }}
-                      >
-                        ⊷ &nbsp;Add to Cart
-                      </button>
-                    </div>
-                  </div>
-
-                  <span style={{ position: "absolute", bottom: 8, left: 8, fontSize: 11, color: "rgba(201,168,76,0.15)", fontFamily: "Georgia,serif" }}>✦</span>
-                  <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 11, color: "rgba(201,168,76,0.15)", fontFamily: "Georgia,serif" }}>✦</span>
-                </Link>
-              ) : null;
-            })()}
-
-            {/* ── SMALL GRID ── */}
-            <div className="hp-arrivals-grid">
-              {NEW_ARRIVALS.filter(b => !b.featured).map((book, i) => (
-                <BookCard key={book.id} book={book} index={i} visible={arrivalsVisible} />
+          <div
+            ref={arrivalsRef}
+            className={`hp-shelf hp-reveal ${arrivalsVisible ? "hp-reveal-in" : ""}`}
+          >
+            <div className="hp-shelf-row">
+              {newArrivals.map((book, i) => (
+                <ShelfBook key={book.id} book={book} index={i} />
               ))}
-
-              {/* View All placeholder */}
-              <Link to="/books?sort=newest" className="hp-card-viewall" style={{ textDecoration: "none" }}>
-                <div className="hp-card-viewall-inner">
-                  <span style={{ fontSize: 22, color: "rgba(201,168,76,0.25)", fontFamily: "Georgia,serif" }}>✦</span>
-                  <div style={{ fontSize: 9, letterSpacing: "3px", textTransform: "uppercase", color: "rgba(201,168,76,0.3)", fontFamily: "Georgia,serif", textAlign: "center", lineHeight: 1.6 }}>View<br />All Titles</div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.3)" strokeWidth="1.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,245,230,0.4)", fontFamily: "Georgia,serif", marginBottom: 3 }}>Browse collection</div>
-                <div style={{ fontSize: 11, fontStyle: "italic", color: "rgba(201,168,76,0.3)", fontFamily: "Georgia,serif" }}>All new arrivals →</div>
-              </Link>
             </div>
-
+            <div className="hp-shelf-wood" />
+            <div className="hp-shelf-ends">
+              <div style={{ width: 60, height: "0.5px", background: "rgba(201,168,76,0.15)" }} />
+              <span style={{ fontSize: 9, color: "rgba(201,168,76,0.35)" }}>◆</span>
+              <div style={{ width: 60, height: "0.5px", background: "rgba(201,168,76,0.15)" }} />
+            </div>
           </div>
         </section>
 
         {/* ══ EDITORIAL BANNER ══ */}
-        <div ref={bannerRef} className="hp-banner"
-          style={{ opacity: bannerVisible ? 1 : 0, transform: bannerVisible ? "translateY(0)" : "translateY(18px)", transition: "opacity 0.7s ease,transform 0.7s ease" }}>
+        <div
+          ref={bannerRef}
+          className={`hp-banner hp-reveal ${bannerVisible ? "hp-reveal-in" : ""}`}
+        >
           <div className="hp-banner-inner">
             <div className="hp-banner-text">
               <Divider label="Our Philosophy" />
@@ -493,9 +534,9 @@ export default function HomePage() {
             </div>
             <div className="hp-banner-visual">
               <div className="hp-pile">
-                <img src={FEATURED[2].cover} alt="" />
-                <img src={FEATURED[0].cover} alt="" />
-                <img src={FEATURED[1].cover} alt="" />
+                {featured.slice(0, 3).map((b) => (
+                  <PileImage key={b.id} src={b.cover} title={b.title} />
+                ))}
               </div>
             </div>
           </div>
