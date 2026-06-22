@@ -1,14 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-
-const CATEGORIES = [
-  { label: "Fiction", sub: ["Literary Fiction", "Fantasy", "Sci-Fi", "Horror", "Romance"] },
-  { label: "Non-Fiction", sub: ["History", "Biography", "Science", "Philosophy", "Essays"] },
-  { label: "Poetry", sub: ["Classical", "Modern", "Anthology", "Translated"] },
-  { label: "Philosophy", sub: ["Ancient", "Modern", "Ethics", "Existentialism"] },
-  { label: "Art & Design", sub: ["Architecture", "Photography", "Illustration", "Typography"] },
-];
+import categoryApi from "../../api/categoryApi";
 
 /** Maps pathname → { num, label } */
 const FOLIO_MAP = [
@@ -51,18 +44,23 @@ function getFolio(pathname) {
   return hit;
 }
 
+/** Converts a category name into a URL-safe slug. */
+function toSlug(name) {
+  return name.toLowerCase().replace(/\s+/g, "-");
+}
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [categories, setCategories] = useState([]);
   const [catOpen, setCatOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState("");
   const [cartPulse, setCartPulse] = useState(false);
 
-  console.log("location.pathname:", location.pathname, JSON.stringify(location.pathname));
   const folio = getFolio(location.pathname);
 
   const catRef = useRef(null);
@@ -70,6 +68,13 @@ export default function Navbar() {
   const overlayInputRef = useRef(null);
 
   const closeSearch = () => { setSearchOpen(false); setSearchVal(""); };
+
+  /* ── fetch categories từ backend ── */
+  useEffect(() => {
+    categoryApi.getAll()
+      .then(res => setCategories(res.data))
+      .catch(console.error);
+  }, []);
 
   /* ── close dropdowns on outside click ── */
   useEffect(() => {
@@ -109,6 +114,11 @@ export default function Navbar() {
   const handleLogout = async () => {
     await logout();
     setAvatarOpen(false);
+  };
+
+  const goToCategory = (name) => {
+    navigate(`/category/${toSlug(name)}`);
+    setCatOpen(false);
   };
 
   const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "?";
@@ -261,13 +271,14 @@ export default function Navbar() {
         }
         .nav-overlay-close:hover { color: #c9a84c; border-color: rgba(201,168,76,0.35); }
 
-        /* ────────────────── CATEGORIES PANEL ── */
+        /* ────────────────── CATEGORIES PANEL ──
+           Flat single-row list — dữ liệu DB hiện tại không có parent/sub category */
         .nav-cat-panel {
           position: fixed; top: 82px; left: 0; right: 0;
           background: #0F1720;
           border-bottom: 0.5px solid rgba(201,168,76,0.15);
           border-top: 0.5px solid rgba(201,168,76,0.08);
-          display: flex; padding: 1.75rem 1.75rem;
+          display: flex; padding: 1.5rem 1.75rem;
           animation: panelIn 0.2s ease;
           z-index: 999;
         }
@@ -275,26 +286,23 @@ export default function Navbar() {
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .nav-cat-col {
-          flex: 1; padding: 0 1.25rem;
+        .nav-cat-item {
+          flex: 1; padding: 0.5rem 1.25rem;
           border-right: 0.5px solid rgba(201,168,76,0.07);
           cursor: pointer;
+          display: flex; align-items: center; gap: 8px;
+          transition: color 0.15s, background 0.15s;
+          font-size: 12px; color: rgba(255,245,230,0.78);
+          letter-spacing: 0.5px;
         }
-        .nav-cat-col:first-child { padding-left: 0; }
-        .nav-cat-col:last-child  { border-right: none; }
-        .nav-cat-col-title {
-          font-size: 9px; color: #c9a84c; letter-spacing: 3px;
-          text-transform: uppercase; padding-bottom: 8px; margin-bottom: 8px;
-          border-bottom: 0.5px solid rgba(201,168,76,0.12);
-          display: flex; align-items: center; gap: 7px;
+        .nav-cat-item:first-child { padding-left: 0; }
+        .nav-cat-item:last-child  { border-right: none; }
+        .nav-cat-item:hover { color: #c9a84c; background: rgba(201,168,76,0.04); }
+        .nav-cat-item-gem { font-size: 9px; color: rgba(201,168,76,0.45); flex-shrink: 0; }
+        .nav-cat-empty {
+          font-size: 11px; color: rgba(201,168,76,0.3); font-style: italic;
+          padding: 0.5rem 0;
         }
-        .nav-cat-col-gem { font-size: 9px; color: rgba(201,168,76,0.45); }
-        .nav-cat-sub {
-          font-size: 11px; color: rgba(255,245,230,0.80);
-          font-style: italic; padding: 3px 0; letter-spacing: 0.5px;
-          transition: color 0.15s, padding-left 0.15s;
-        }
-        .nav-cat-sub:hover { color: rgba(201,168,76,0.75); padding-left: 5px; }
 
         /* ─────────────────── AVATAR MENU ── */
         .nav-avatar-menu {
@@ -481,7 +489,7 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link to="/auth" className="nav-enter-btn" style={{ marginLeft: 8 }}>
+              <Link to="/login" className="nav-enter-btn" style={{ marginLeft: 8 }}>
                 ⊷&nbsp;&nbsp;Enter&nbsp;&nbsp;⊶
               </Link>
             )}
@@ -526,37 +534,23 @@ export default function Navbar() {
 
       </div>
 
-      {/* ── CATEGORIES PANEL (outside navbar flow to go full-width) ── */}
+      {/* ── CATEGORIES PANEL — flat list từ DB ── */}
       {catOpen && (
         <div className="nav-cat-panel">
-          {CATEGORIES.map(cat => (
-            <div
-              key={cat.label}
-              className="nav-cat-col"
-              onClick={() => {
-                navigate(`/category/${cat.label.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s/g, "-")}`);
-                setCatOpen(false);
-              }}
-            >
-              <div className="nav-cat-col-title">
-                <span className="nav-cat-col-gem">◆</span>
-                {cat.label}
+          {categories.length === 0 ? (
+            <div className="nav-cat-empty">No categories yet</div>
+          ) : (
+            categories.map(cat => (
+              <div
+                key={cat.id}
+                className="nav-cat-item"
+                onClick={() => goToCategory(cat.name)}
+              >
+                <span className="nav-cat-item-gem">◆</span>
+                {cat.name}
               </div>
-              {cat.sub.map(s => (
-                <div
-                  key={s}
-                  className="nav-cat-sub"
-                  onClick={e => {
-                    e.stopPropagation();
-                    navigate(`/category/${cat.label.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s/g, "-")}/${s.toLowerCase().replace(/\s/g, "-")}`);
-                    setCatOpen(false);
-                  }}
-                >
-                  {s}
-                </div>
-              ))}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
     </>

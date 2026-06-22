@@ -1,6 +1,21 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import categoryApi from "../api/categoryApi";
+
+/** Converts a category name into a URL-safe slug. */
+function toSlug(name) {
+  return name.toLowerCase().replace(/\s+/g, "-");
+}
 
 export default function Footer() {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    categoryApi.getAll()
+      .then(res => setCategories(res.data))
+      .catch(console.error);
+  }, []);
+
   return (
     <>
       <style>{`
@@ -11,6 +26,7 @@ export default function Footer() {
         .hp-footer-col-title-line{flex:1;height:0.5px;background:rgba(201,168,76,0.1);}
         .hp-footer-link{display:block;font-size:12px;font-style:italic;color:rgba(255,245,230,0.42);padding:4px 0;letter-spacing:0.3px;text-decoration:none;transition:color 0.2s,padding-left 0.2s;cursor:pointer;}
         .hp-footer-link:hover{color:rgba(201,168,76,0.65);padding-left:5px;}
+        .hp-footer-empty{font-size:11px;color:rgba(201,168,76,0.25);font-style:italic;font-family:Georgia,serif;}
         .hp-footer-bottom{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;}
         .hp-footer-brand{display:flex;align-items:center;gap:10px;}
         .hp-footer-social{display:flex;align-items:center;gap:14px;}
@@ -58,15 +74,22 @@ export default function Footer() {
               </Link>
             </div>
 
-            {/* COL 2 — Catalogue */}
+            {/* COL 2 — Catalogue (category thật từ DB) */}
             <div>
               <div className="hp-footer-col-title">
                 Catalogue
                 <div className="hp-footer-col-title-line" />
               </div>
-              {["Fiction", "Non-Fiction", "Poetry", "Philosophy", "Art & Design", "New Arrivals", "Staff Picks"].map(l => (
-                <Link key={l} to={`/category/${l.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s/g, "-")}`} className="hp-footer-link">{l}</Link>
-              ))}
+              {categories.length === 0 ? (
+                <span className="hp-footer-empty">No categories yet</span>
+              ) : (
+                categories.map(c => (
+                  <Link key={c.id} to={`/category/${toSlug(c.name)}`} className="hp-footer-link">
+                    {c.name}
+                  </Link>
+                ))
+              )}
+              <Link to="/books?sort=newest" className="hp-footer-link">New Arrivals</Link>
             </div>
 
             {/* COL 3 — The Shelf */}
