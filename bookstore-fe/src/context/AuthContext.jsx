@@ -4,7 +4,7 @@ import authApi from "../api/authApi"
 
 const AuthContext = createContext(null)
 
-export const AuthProvider = ( {children} ) => {
+export const AuthProvider = ({ children }) => {
 
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -27,22 +27,27 @@ export const AuthProvider = ( {children} ) => {
         }
         checkAuth()
     }, [])
-  
+
     const login = (userData) => {
 
         setUser(userData)
         setToken(userData.token)
     }
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await authApi.logout();
+        } catch (error) {
+            console.error("Logout failed", error);
+        } finally {
+            setUser(null);
+            clearToken();
+        }
+    };
 
-        setUser(null)
-        clearToken()
-    }
-    
-    if (loading) return null    
+    if (loading) return null
     return (
-        <AuthContext.Provider value={{user, login, logout}} >
+        <AuthContext.Provider value={{ user, login, logout }} >
             {children}
         </AuthContext.Provider>
     )
