@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ROMANS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 export default function ShelfBook({ book, index }) {
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const w = book.featured ? 195 : 165;
@@ -13,6 +15,7 @@ export default function ShelfBook({ book, index }) {
       style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, position: "relative" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => navigate(`/books/${book.id}`)}
     >
       <div style={{ position: "relative" }}>
         {imgError ? (
