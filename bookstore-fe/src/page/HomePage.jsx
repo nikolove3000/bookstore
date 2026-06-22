@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import bookApi from "../api/bookApi";
 import categoryApi from "../api/categoryApi";
+import { ShelfRow } from "../component/ShelfBook";
+import Footer from "../component/Footer";
 
 /* ─── Static accent/quote map ─── */
 const BOOK_META = {
@@ -12,20 +14,20 @@ const BOOK_META = {
 const DEFAULT_META = { accent: "#c9a84c", quote: "", src: "" };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-/* ─── Intersection observer ───
-   Dùng CSS @keyframes (animation) thay cho inline-style opacity transition
-   để tránh bug compositing của Chromium/Edge khi container chứa <img>. */
-function useReveal(threshold = 0.08) {
+/* ─── Intersection observer ─── */
+
+function useReveal(threshold = 0.08, deps = []) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
+    if (!ref.current) return;
     const obs = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
       { threshold }
     );
-    if (ref.current) obs.observe(ref.current);
+    obs.observe(ref.current);
     return () => obs.disconnect();
-  }, [threshold]);
+  }, deps);
   return [ref, visible];
 }
 
@@ -70,112 +72,6 @@ function PileImage({ src, title }) {
   return <img src={src} alt={title || ""} onError={() => setError(true)} />;
 }
 
-/* ─── Shelf Book (New Arrivals) ─── */
-const ROMANS = ["I", "II", "III", "IV", "V", "VI"];
-
-function ShelfBook({ book, index }) {
-  const [hovered, setHovered] = useState(false);
-  const [imgError, setImgError] = useState(false);
-  const w = book.featured ? 195 : 165;
-  const h = book.featured ? 288 : 244;
-
-  return (
-    <div
-      style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, position: "relative" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div style={{ position: "relative" }}>
-        {imgError ? (
-          /* ── fallback khi ảnh lỗi/không load được ── */
-          <div style={{
-            width: w, height: h, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", gap: 10,
-            background: "linear-gradient(160deg, #14171c 0%, #0c0a0a 100%)",
-            border: book.featured ? "0.5px solid rgba(201,168,76,0.4)" : "0.5px solid rgba(201,168,76,0.18)",
-            boxShadow: hovered
-              ? "-4px 16px 24px rgba(0,0,0,0.6), -3px 3px 0 0.5px rgba(201,168,76,0.25)"
-              : "-3px 3px 0 rgba(0,0,0,0.55), -3px 3px 0 0.5px rgba(201,168,76,0.06)",
-            transform: hovered ? "translateY(-14px) rotate(-1.5deg)" : "translateY(0) rotate(0)",
-            transition: "transform 0.32s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.32s ease",
-            padding: "0 14px",
-          }}>
-            <span style={{ fontSize: 18, color: "rgba(201,168,76,0.35)" }}>✦</span>
-            <span style={{
-              fontSize: 11, color: "rgba(255,245,230,0.5)", letterSpacing: "0.5px",
-              textAlign: "center", lineHeight: 1.4, fontFamily: "Georgia,serif", fontStyle: "italic",
-            }}>{book.title}</span>
-            <span style={{
-              fontSize: 8, color: "rgba(201,168,76,0.3)", letterSpacing: "2px",
-              textTransform: "uppercase", fontFamily: "Georgia,serif",
-            }}>No Cover</span>
-          </div>
-        ) : (
-          <img
-            src={book.cover} alt={book.title}
-            onError={() => setImgError(true)}
-            style={{
-              width: w, height: h, objectFit: "cover", display: "block",
-              willChange: "transform",
-              backfaceVisibility: "hidden",
-              transform: hovered
-                ? "translateY(-14px) rotate(-1.5deg) translateZ(0)"
-                : "translateY(0) rotate(0) translateZ(0)",
-              border: book.featured ? "0.5px solid rgba(201,168,76,0.4)" : "0.5px solid rgba(201,168,76,0.18)",
-              boxShadow: hovered
-                ? "-4px 16px 24px rgba(0,0,0,0.6), -3px 3px 0 0.5px rgba(201,168,76,0.25)"
-                : book.featured
-                  ? "-3px 3px 0 rgba(0,0,0,0.6), 0 0 18px rgba(201,168,76,0.1)"
-                  : "-3px 3px 0 rgba(0,0,0,0.55), -3px 3px 0 0.5px rgba(201,168,76,0.06)",
-              transition: "transform 0.32s cubic-bezier(0.34,1.4,0.64,1), box-shadow 0.32s ease",
-            }}
-          />
-        )}
-
-        {book.featured && (
-          <div style={{
-            position: "absolute", top: -9, right: -9, width: 22, height: 22,
-            background: "#0d0b0b", border: "0.5px solid rgba(201,168,76,0.5)", borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 10, color: "#c9a84c", zIndex: 3,
-          }}>✦</div>
-        )}
-
-        {book.isNew && (
-          <div style={{
-            position: "absolute", bottom: 6, right: 6, width: 6, height: 6, borderRadius: "50%",
-            background: "#c9a84c", boxShadow: "0 0 6px rgba(201,168,76,0.6)",
-          }} />
-        )}
-      </div>
-
-      <span style={{
-        position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)",
-        fontSize: 8, color: "rgba(201,168,76,0.3)", letterSpacing: "2px",
-        opacity: hovered ? 0 : 1, transition: "opacity 0.3s ease", fontFamily: "Georgia,serif",
-      }}>{ROMANS[index]}</span>
-
-      <div style={{
-        marginTop: 12, textAlign: "center", width: 160, minHeight: 64,
-        opacity: hovered ? 1 : 0, transform: hovered ? "translateY(0)" : "translateY(-4px)",
-        transition: "opacity 0.3s ease, transform 0.3s ease",
-      }}>
-        <div style={{
-          fontSize: 8, letterSpacing: "2px", textTransform: "uppercase",
-          color: "rgba(201,168,76,0.5)", marginBottom: 4, fontFamily: "Georgia,serif", fontStyle: "italic",
-        }}>{book.tag}</div>
-
-        <div style={{
-          fontSize: 14, color: "rgba(255,245,230,0.8)", lineHeight: 1.3, marginBottom: 4, fontFamily: "Georgia,serif",
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>{book.title}</div>
-        <div style={{ fontSize: 10, fontStyle: "italic", color: "rgba(201,168,76,0.5)", marginBottom: 5, fontFamily: "Georgia,serif" }}>{book.author}</div>
-        <div style={{ fontSize: 11, color: "rgba(201,168,76,0.68)", letterSpacing: "0.5px", fontFamily: "Georgia,serif" }}>${book.price.toFixed(2)}</div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Main ─── */
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -188,9 +84,9 @@ export default function HomePage() {
   const [manualPick, setManualPick] = useState(false);
 
   /* ── reveal-on-scroll refs (CSS animation, không dùng inline opacity) ── */
-  const [genresRef, genresVisible] = useReveal(0.05);
-  const [arrivalsRef, arrivalsVisible] = useReveal(0.04);
-  const [bannerRef, bannerVisible] = useReveal(0.08);
+  const [genresRef, genresVisible] = useReveal(0.05, [loading]);
+  const [arrivalsRef, arrivalsVisible] = useReveal(0.04, [loading]);
+  const [bannerRef, bannerVisible] = useReveal(0.08, [loading]);
 
   /* ── fetch data từ backend ── */
   useEffect(() => {
@@ -487,23 +383,7 @@ export default function HomePage() {
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           </div>
-
-          <div
-            ref={arrivalsRef}
-            className={`hp-shelf hp-reveal ${arrivalsVisible ? "hp-reveal-in" : ""}`}
-          >
-            <div className="hp-shelf-row">
-              {newArrivals.map((book, i) => (
-                <ShelfBook key={book.id} book={book} index={i} />
-              ))}
-            </div>
-            <div className="hp-shelf-wood" />
-            <div className="hp-shelf-ends">
-              <div style={{ width: 60, height: "0.5px", background: "rgba(201,168,76,0.15)" }} />
-              <span style={{ fontSize: 9, color: "rgba(201,168,76,0.35)" }}>◆</span>
-              <div style={{ width: 60, height: "0.5px", background: "rgba(201,168,76,0.15)" }} />
-            </div>
-          </div>
+          <ShelfRow books={newArrivals} sectionRef={arrivalsRef} visible={arrivalsVisible} />
         </section>
 
         {/* ══ EDITORIAL BANNER ══ */}
@@ -541,124 +421,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
-        {/* ══ FOOTER ══ */}
-        <footer className="hp-footer-wrap">
-          <div className="hp-footer-inner">
-            <div className="hp-footer-top">
-
-              {/* COL 1 — Brand + about + newsletter */}
-              <div>
-                <div style={{ marginBottom: "1.2rem" }}>
-                  <div style={{ fontSize: 17, color: "#c9a84c", letterSpacing: "1.5px", marginBottom: 4, fontFamily: "Georgia,serif" }}>The Liminal Shelf</div>
-                  <div style={{ fontSize: 9, color: "rgba(201,168,76,0.38)", letterSpacing: "4px", textTransform: "uppercase", fontStyle: "italic", fontFamily: "Georgia,serif" }}>where stories linger between worlds</div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
-                  <div style={{ width: 18, height: "0.5px", background: "rgba(201,168,76,0.1)" }} />
-                  <span style={{ fontSize: 9, color: "rgba(201,168,76,0.25)", fontFamily: "Georgia,serif" }}>✦</span>
-                  <div style={{ flex: 1, height: "0.5px", background: "rgba(201,168,76,0.1)" }} />
-                </div>
-
-                <p style={{ fontSize: 12, fontStyle: "italic", color: "rgba(255,245,230,0.3)", lineHeight: 1.8, marginBottom: "1.4rem", maxWidth: 340, fontFamily: "Georgia,serif" }}>
-                  A threshold between the world of the living and the world of the read. We hand-select each title for the reader who notices the margins, the footnotes, the space between words.
-                </p>
-
-                <div style={{ fontSize: 9, letterSpacing: "3px", textTransform: "uppercase", color: "rgba(201,168,76,0.28)", marginBottom: 14, fontFamily: "Georgia,serif" }}>✦ &nbsp;Join the Reading Room</div>
-                <p style={{ fontSize: 12, fontStyle: "italic", color: "rgba(255,245,230,0.25)", lineHeight: 1.75, marginBottom: 14, fontFamily: "Georgia,serif" }}>
-                  Create an account to save favourites, track orders, and receive curated recommendations.
-                </p>
-                <Link to="/auth" style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  background: "#1a0808", border: "0.5px solid #8b2020",
-                  padding: "9px 20px", fontFamily: "Georgia,serif",
-                  fontSize: 9, letterSpacing: "3px", color: "#c0392b",
-                  textTransform: "uppercase", textDecoration: "none",
-                  transition: "all 0.3s",
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#c9a84c"; e.currentTarget.style.color = "#c9a84c"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#8b2020"; e.currentTarget.style.color = "#c0392b"; }}
-                >
-                  ⊷ &nbsp;Enter the Shelf&nbsp; ⊶
-                </Link>
-              </div>
-
-              {/* COL 2 — Catalogue */}
-              <div>
-                <div className="hp-footer-col-title">
-                  Catalogue
-                  <div className="hp-footer-col-title-line" />
-                </div>
-                {["Fiction", "Non-Fiction", "Poetry", "Philosophy", "Art & Design", "New Arrivals", "Staff Picks"].map(l => (
-                  <Link key={l} to={`/category/${l.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s/g, "-")}`} className="hp-footer-link">{l}</Link>
-                ))}
-              </div>
-
-              {/* COL 3 — The Shelf */}
-              <div>
-                <div className="hp-footer-col-title">
-                  The Shelf
-                  <div className="hp-footer-col-title-line" />
-                </div>
-                {[
-                  { label: "Our Story", to: "/about" },
-                  { label: "Curation Philosophy", to: "/about#philosophy" },
-                  { label: "Reading Notes", to: "/blog" },
-                  { label: "Events & Readings", to: "/events" },
-                  { label: "Gift Cards", to: "/gift-cards" },
-                  { label: "Rare Editions", to: "/rare" },
-                ].map(({ label, to }) => (
-                  <Link key={label} to={to} className="hp-footer-link">{label}</Link>
-                ))}
-              </div>
-
-              {/* COL 4 — Help */}
-              <div>
-                <div className="hp-footer-col-title">
-                  Help
-                  <div className="hp-footer-col-title-line" />
-                </div>
-                {[
-                  { label: "My Orders", to: "/orders" },
-                  { label: "Shipping & Returns", to: "/shipping" },
-                  { label: "FAQ", to: "/faq" },
-                  { label: "Contact", to: "/contact" },
-                ].map(({ label, to }) => (
-                  <Link key={label} to={to} className="hp-footer-link">{label}</Link>
-                ))}
-                <div style={{ marginTop: "1.4rem" }}>
-                  {[
-                    { label: "◆ \u00a0Privacy Policy", to: "/privacy" },
-                    { label: "◆ \u00a0Terms of Service", to: "/terms" },
-                  ].map(({ label, to }) => (
-                    <Link key={label} to={to} className="hp-footer-link">{label}</Link>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* bottom bar */}
-            <div className="hp-footer-bottom">
-              <div className="hp-footer-brand">
-                <span style={{ fontSize: 9, color: "rgba(201,168,76,0.28)", letterSpacing: "3px", textTransform: "uppercase", fontFamily: "Georgia,serif" }}>The Liminal Shelf</span>
-                <span style={{ fontSize: 9, color: "rgba(201,168,76,0.15)", fontFamily: "Georgia,serif" }}>◆</span>
-                <span style={{ fontSize: 9, color: "rgba(201,168,76,0.18)", letterSpacing: "1.5px", fontStyle: "italic", fontFamily: "Georgia,serif" }}>where stories linger between worlds</span>
-              </div>
-              <div className="hp-footer-social">
-                {["Instagram", "Goodreads", "Substack"].map((s, i) => (
-                  <span key={s} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    {i > 0 && <span style={{ fontSize: 9, color: "rgba(201,168,76,0.12)", fontFamily: "Georgia,serif" }}>◆</span>}
-                    <a className="hp-footer-social-link">{s}</a>
-                  </span>
-                ))}
-              </div>
-              <span style={{ fontSize: 9, color: "rgba(255,245,230,0.14)", letterSpacing: "1px", fontStyle: "italic", fontFamily: "Georgia,serif" }}>
-                © {new Date().getFullYear()} &nbsp;·&nbsp; All rights reserved
-              </span>
-            </div>
-          </div>
-        </footer>
 
       </div>
     </>
