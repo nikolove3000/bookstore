@@ -18,6 +18,7 @@ public class AddToCartRequest {
     private Long bookId;
 
     /** Quantity to add — must be at least 1. */
+    @NotNull
     @Min(1)
     private Integer quantity;
 }
