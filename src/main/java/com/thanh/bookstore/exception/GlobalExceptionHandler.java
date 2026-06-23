@@ -92,4 +92,15 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(404).body(errorResponse);
     }
+
+    /**
+     * Handles insufficient stock errors.
+     */
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "INSUFFICIENT_STOCK", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
 }
