@@ -1,0 +1,18 @@
+import axiosClient from './axiosClient'
+
+const cartApi = {
+    getCart: () => axiosClient.get('/cart'),
+
+    addItem: (bookId, quantity) =>
+        axiosClient.post('/cart/items', { bookId, quantity }),
+
+    updateQuantity: (itemId, quantity) =>
+        axiosClient.put(`/cart/items/${itemId}`, { quantity }),
+
+    removeItem: (itemId) =>
+        axiosClient.delete(`/cart/items/${itemId}`),
+
+    clearCart: () => axiosClient.delete('/cart'),
+}
+
+export default cartApi

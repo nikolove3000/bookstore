@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useParams, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import bookApi from "../api/bookApi";
 import { ShelfRow } from "../component/ShelfBook";
+import { useCart } from "../context/CartContext";
 
 function Stars({ rating = 0 }) {
   const full = Math.round(rating);
@@ -24,6 +27,11 @@ export default function BookDetailPage() {
   const [imgError, setImgError] = useState(false);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { addItem } = useCart();
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -52,10 +60,24 @@ export default function BookDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleAddToCart = () => {
-    // TODO: wire to cartApi once Cart feature is built
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const handleAddToCart = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+    if (!inStock || adding) return;
+    setAdding(true);
+    try {
+      await addItem(book.id, qty);   // ← đổi từ cartApi.addItem(...)
+      setAdded(true);
+      setBook(prev => ({ ...prev, stockQuantity: prev.stockQuantity - qty }));
+      setTimeout(() => setAdded(false), 2000);
+    } catch (err) {
+      setBook(prev => ({ ...prev, stockQuantity: prev.stockQuantity + qty })); // rollback
+      alert(err.response?.data?.message || "Could not add to cart");
+    } finally {
+      setAdding(false);
+    }
   };
 
   if (loading) {
@@ -90,10 +112,10 @@ export default function BookDetailPage() {
 
         .bd-tag{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(201,168,76,0.6);font-style:italic;margin-bottom:14px;}
         .bd-title{font-size:38px;font-weight:normal;line-height:1.1;color:rgba(255,245,230,0.93);margin-bottom:10px;letter-spacing:0.3px;}
-        .bd-author{font-size:14px;font-style:italic;color:rgba(201,168,76,0.65);margin-bottom:18px;letter-spacing:0.5px;}
+        .bd-author{font-size:15px;font-style:italic;color:rgba(201,168,76,0.75);margin-bottom:18px;letter-spacing:0.5px;}
 
         .bd-rating-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
-        .bd-rating-text{font-size:11px;color:rgba(201,168,76,0.5);letter-spacing:0.5px;}
+        .bd-rating-text{font-size:12px;color:rgba(201,168,76,0.65);letter-spacing:0.5px;}
 
         .bd-divider{display:flex;align-items:center;gap:10px;margin:20px 0;}
         .bd-divider-line{flex:1;height:0.5px;background:rgba(201,168,76,0.15);}
@@ -101,9 +123,9 @@ export default function BookDetailPage() {
 
         .bd-price-row{display:flex;align-items:baseline;gap:16px;margin-bottom:20px;}
         .bd-price{font-size:28px;color:#c9a84c;letter-spacing:1px;}
-        .bd-stock{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-style:italic;}
-        .bd-stock.in{color:rgba(120,180,120,0.7);}
-        .bd-stock.out{color:rgba(192,57,43,0.8);}
+        .bd-stock{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;font-style:italic;}
+        .bd-stock.in{color:rgba(201,168,76,0.85);}
+        .bd-stock.out{color:#c0392b;}
 
         .bd-buy-row{display:flex;align-items:center;gap:16px;margin-bottom:28px;}
         .bd-qty{display:flex;align-items:center;border:0.5px solid rgba(201,168,76,0.25);}
@@ -114,13 +136,14 @@ export default function BookDetailPage() {
         .bd-add-btn{background:#1a0808;border:0.5px solid #8b2020;padding:11px 28px;font-family:Georgia,serif;font-size:11px;letter-spacing:3px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
         .bd-add-btn:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
         .bd-add-btn.added{border-color:#c9a84c;color:#c9a84c;background:rgba(201,168,76,0.08);}
+        .bd-add-btn:disabled{opacity: 0.4;cursor: not-allowed;}
 
-        .bd-desc{font-size:13px;line-height:1.85;color:rgba(255,245,230,0.55);max-width:560px;margin-bottom:24px;font-style:italic;}
+        .bd-desc{font-size:14px;line-height:1.85;color:rgba(255,245,230,0.78);max-width:560px;margin-bottom:24px;font-style:italic;}
 
         .bd-meta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 24px;max-width:480px;}
         .bd-meta-item{display:flex;flex-direction:column;gap:3px;}
         .bd-meta-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.4);}
-        .bd-meta-value{font-size:12px;color:rgba(255,245,230,0.6);font-style:italic;}
+        .bd-meta-value{font-size:13px;color:rgba(255,245,230,0.78);font-style:italic;}
 
         .bd-cat-tags{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
         .bd-cat-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,0.65);border:0.5px solid rgba(201,168,76,0.25);padding:4px 10px;text-decoration:none;transition:all 0.2s;}
@@ -136,11 +159,12 @@ export default function BookDetailPage() {
         .bd-review-item{padding:1.4rem 0;border-bottom:0.5px solid rgba(201,168,76,0.08);}
         .bd-review-item:last-child{border-bottom:none;}
         .bd-review-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-        .bd-review-name{font-size:13px;color:rgba(255,245,230,0.78);letter-spacing:0.3px;}
-        .bd-review-date{font-size:10px;color:rgba(201,168,76,0.4);font-style:italic;}
-        .bd-review-comment{font-size:12px;line-height:1.75;color:rgba(255,245,230,0.5);font-style:italic;}
+        .bd-review-name{font-size:14px;color:rgba(255,245,230,0.85);letter-spacing:0.3px;}
+        .bd-review-date{font-size:11px;color:rgba(201,168,76,0.55);font-style:italic;}
+        .bd-review-comment{font-size:13.5px;line-height:1.8;color:rgba(255,245,230,0.76);font-style:italic;}
 
-        .bd-empty-state{text-align:center;padding:3rem 0;color:rgba(201,168,76,0.35);font-style:italic;font-size:12px;}
+        .bd-empty-state{text-align:center;padding:3rem 0;color:rgba(201,168,76,0.48);font-style:italic;font-size:13px;}
+
       `}</style>
 
       <div className="bd-root">
@@ -202,8 +226,18 @@ export default function BookDetailPage() {
                 <span>{qty}</span>
                 <button onClick={() => setQty(q => Math.min(book.stockQuantity ?? 99, q + 1))} disabled={!inStock}>+</button>
               </div>
-              <button className={`bd-add-btn ${added ? "added" : ""}`} onClick={handleAddToCart} disabled={!inStock}>
-                {added ? "✓ Added to Cart" : "⊷ Add to Cart ⊶"}
+              <button
+                className={`bd-add-btn ${added ? "added" : ""}`}
+                onClick={handleAddToCart}
+                disabled={(!inStock && !!user) || adding}
+              >
+                {!user
+                  ? "Login to unlock"
+                  : added
+                    ? "✓ Added to Cart"
+                    : adding
+                      ? "Adding..."
+                      : "⊷ Add to Cart ⊶"}
               </button>
             </div>
 

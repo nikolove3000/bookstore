@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import categoryApi from "../../api/categoryApi";
+import cartApi from "../../api/cartApi";
+import { useCart } from "../../context/CartContext";
 
 /** Maps pathname → { num, label } */
 const FOLIO_MAP = [
@@ -51,6 +53,7 @@ function toSlug(name) {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { cart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,6 +63,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState("");
   const [cartPulse, setCartPulse] = useState(false);
+
 
   const folio = getFolio(location.pathname);
 
@@ -98,11 +102,15 @@ export default function Navbar() {
     if (searchOpen) overlayInputRef.current?.focus();
   }, [searchOpen]);
 
-  /* ── cart pulse demo ── */
+  const prevCountRef = useRef(0);
+
   useEffect(() => {
-    const t = setTimeout(() => setCartPulse(true), 1200);
-    return () => clearTimeout(t);
-  }, []);
+    if (cart.totalItems > prevCountRef.current) {
+      setCartPulse(true);
+      setTimeout(() => setCartPulse(false), 1500);
+    }
+    prevCountRef.current = cart.totalItems;
+  }, [cart.totalItems]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -436,8 +444,8 @@ export default function Navbar() {
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <path d="M16 10a4 4 0 01-8 0" />
               </svg>
-              {user && (
-                <span className={`nav-cart-badge ${cartPulse ? "pulse" : ""}`}>3</span>
+              {user && cart.totalItems > 0 && (
+                <span className={`nav-cart-badge ${cartPulse ? "pulse" : ""}`}>{cart.totalItems}</span>
               )}
             </button>
 

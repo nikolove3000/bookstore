@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import authApi from "../../api/authApi";
 import { books } from "../../data/books";
@@ -11,6 +11,7 @@ const LoginForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) => 
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const book = books[currentBook] ?? books[0];
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,7 +23,7 @@ const LoginForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) => 
     try {
       const response = await authApi.login(form);
       login(response.data);
-      navigate("/");
+      navigate(location.state?.from || "/");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     } finally {
