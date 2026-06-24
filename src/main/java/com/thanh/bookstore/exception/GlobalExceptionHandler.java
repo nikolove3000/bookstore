@@ -103,4 +103,26 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(409).body(errorResponse);
     }
+
+    /**
+     * Handles checkout attempts with an empty cart.
+     */
+    @ExceptionHandler(EmptyCartException.class)
+    public ResponseEntity<ErrorResponse> handleEmptyCart(EmptyCartException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                400, "EMPTY_CART", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(400).body(errorResponse);
+    }
+
+    /**
+     * Handles invalid order state transitions.
+     */
+    @ExceptionHandler(InvalidOrderStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOrderState(InvalidOrderStateException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "INVALID_ORDER_STATE", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
 }
