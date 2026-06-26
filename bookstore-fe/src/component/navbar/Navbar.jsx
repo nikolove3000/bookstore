@@ -83,7 +83,13 @@ export default function Navbar() {
   /* ── close dropdowns on outside click ── */
   useEffect(() => {
     const handler = (e) => {
-      if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false);
+      if (
+        catRef.current &&
+        !catRef.current.contains(e.target) &&
+        !e.target.closest(".nav-cat-panel")
+      ) {
+        setCatOpen(false);
+      }
       if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
     };
     document.addEventListener("mousedown", handler);
