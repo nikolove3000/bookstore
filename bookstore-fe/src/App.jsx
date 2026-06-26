@@ -8,6 +8,9 @@ import BookListPage from "./page/BookListPage";
 import BookDetailPage from "./page/BookDetailPage";
 import CartPage from "./page/CartPage";
 import { CartProvider } from "./context/CartContext";
+import CheckoutPage from "./page/CheckoutPage";
+import OrderDetailPage from "./page/OrderDetailPage";
+import OrderHistoryPage from "./page/OrderHistoryPage";
 
 function Layout({ children }) {
   return (
@@ -38,7 +41,9 @@ export default function App() {
             <Route path="/category/:slug" element={<Layout><BookListPage /></Layout>} />
             <Route path="/category/:slug/:sub" element={<Layout><BookListPage /></Layout>} />
             <Route path="/cart" element={<Layout><CartPage /></Layout>} />
-            <Route path="/orders" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Orders — coming soon</div></Layout>} />
+            <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+            <Route path="/orders/:id" element={<Layout><OrderDetailPage /></Layout>} />
+            <Route path="/orders" element={<Layout><OrderHistoryPage /></Layout>} />
             <Route path="/profile" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Profile — coming soon</div></Layout>} />
             <Route path="/wishlist" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Wishlist — coming soon</div></Layout>} />
             <Route path="/about" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>About — coming soon</div></Layout>} />
