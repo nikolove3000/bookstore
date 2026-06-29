@@ -21,6 +21,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -35,7 +36,6 @@ export default function OrderDetailPage() {
   }, [id, user, navigate, location.pathname]);
 
   const handleCancel = async () => {
-    if (!window.confirm("Cancel this order? Stock will be restored.")) return;
     setCancelling(true);
     try {
       const res = await orderApi.cancel(id);
@@ -48,6 +48,7 @@ export default function OrderDetailPage() {
       }
     } finally {
       setCancelling(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -112,6 +113,19 @@ export default function OrderDetailPage() {
 
         .od-back-link{display:block;text-align:center;margin-top:1.2rem;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.5);text-decoration:none;border-bottom:0.5px solid rgba(201,168,76,0.15);padding-bottom:2px;}
         .od-back-link:hover{color:rgba(201,168,76,0.8);}
+        .od-modal-overlay{position:fixed;inset:0;background:rgba(4,2,2,0.82);display:flex;align-items:center;justify-content:center;z-index:2000;animation:odModalFade 0.2s ease;}
+        @keyframes odModalFade{from{opacity:0;}to{opacity:1;}}
+        .od-modal{position:relative;background:#0F1720;border:0.5px solid rgba(201,168,76,0.25);padding:2.5rem;max-width:380px;text-align:center;animation:odModalIn 0.25s ease;}
+        @keyframes odModalIn{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+        .od-modal-icon{font-size:22px;color:#c0392b;opacity:0.6;margin-bottom:14px;}
+        .od-modal-title{font-size:18px;font-weight:normal;color:rgba(255,245,230,0.92);letter-spacing:0.5px;margin-bottom:14px;font-family:Georgia,serif;}
+        .od-modal-text{font-size:14px;line-height:1.75;color:rgba(255,245,230,0.62);font-style:italic;margin-bottom:24px;}
+        .od-modal-actions{display:flex;align-items:center;gap:12px;}
+        .od-modal-keep{flex:1;background:none;border:0.5px solid rgba(201,168,76,0.25);padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:rgba(201,168,76,0.6);text-transform:uppercase;cursor:pointer;transition:all 0.25s;}
+        .od-modal-keep:hover{border-color:rgba(201,168,76,0.5);color:#c9a84c;}
+        .od-modal-confirm{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
+        .od-modal-confirm:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
+        .od-modal-confirm:disabled,.od-modal-keep:disabled{opacity:0.4;cursor:default;}
       `}</style>
 
       <div className="od-root">
@@ -181,8 +195,8 @@ export default function OrderDetailPage() {
             <div className="od-address">{order.shippingAddress}</div>
 
             {canCancel && (
-              <button className="od-cancel-btn" onClick={handleCancel} disabled={cancelling}>
-                {cancelling ? "Cancelling…" : "✕ Cancel Order"}
+              <button className="od-cancel-btn" onClick={() => setShowCancelModal(true)} disabled={cancelling}>
+                ✕ Cancel Order
               </button>
             )}
 
@@ -191,6 +205,29 @@ export default function OrderDetailPage() {
 
         </div>
       </div>
+
+      {showCancelModal && (
+        <div className="od-modal-overlay" onClick={() => setShowCancelModal(false)}>
+          <div className="od-modal" onClick={e => e.stopPropagation()}>
+            {[{ top: 10, left: 12 }, { top: 10, right: 12 }, { bottom: 10, left: 12 }, { bottom: 10, right: 12 }].map((s, i) => (
+              <span key={i} style={{ position: "absolute", ...s, fontSize: 13, color: "#c9a84c", opacity: 0.4 }}>✦</span>
+            ))}
+            <div className="od-modal-icon">✦</div>
+            <h3 className="od-modal-title">Cancel This Order?</h3>
+            <p className="od-modal-text">
+              Order #{order.id} will be cancelled and all items restored to stock. This action cannot be undone.
+            </p>
+            <div className="od-modal-actions">
+              <button className="od-modal-keep" onClick={() => setShowCancelModal(false)} disabled={cancelling}>
+                Keep Order
+              </button>
+              <button className="od-modal-confirm" onClick={handleCancel} disabled={cancelling}>
+                {cancelling ? "Cancelling…" : "Yes, Cancel It"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
