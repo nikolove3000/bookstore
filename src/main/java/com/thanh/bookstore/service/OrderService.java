@@ -211,4 +211,23 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         return toDto(saved);
     }
+
+    /**
+     * Updates an order's status (admin operation).
+     *
+     * @throws ResourceNotFoundException if the order doesn't exist
+     * @throws InvalidOrderStateException if transitioning from CANCELLED
+     */
+    public OrderDto updateStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderStateException("Cannot change status of a cancelled order");
+        }
+
+        order.setStatus(newStatus);
+        Order saved = orderRepository.save(order);
+        return toDto(saved);
+    }
 }

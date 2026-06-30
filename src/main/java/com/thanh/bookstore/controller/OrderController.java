@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.thanh.bookstore.dto.CheckoutRequest;
 import com.thanh.bookstore.dto.OrderDto;
 import com.thanh.bookstore.dto.OrderSummaryDto;
+import com.thanh.bookstore.dto.UpdateOrderStatusRequest;
 import com.thanh.bookstore.entity.User;
 import com.thanh.bookstore.service.OrderService;
 import com.thanh.bookstore.service.UserService;
@@ -80,5 +82,16 @@ public class OrderController {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
         return userService.findByUsername(userDetails.getUsername());
+    }
+
+    /**
+     * PATCH /api/admin/orders/{id}/status Advances an order's status. Admin
+     * only — temporary endpoint until a full staff dashboard is built.
+     */
+    @PatchMapping("/admin/{id}/status")
+    public ResponseEntity<OrderDto> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateOrderStatusRequest request) {
+        return ResponseEntity.ok(orderService.updateStatus(id, request.getStatus()));
     }
 }

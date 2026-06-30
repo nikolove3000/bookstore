@@ -125,4 +125,26 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(409).body(errorResponse);
     }
+
+    /**
+     * Handles reviews attempted without a verified purchase.
+     */
+    @ExceptionHandler(ReviewNotEligibleException.class)
+    public ResponseEntity<ErrorResponse> handleReviewNotEligible(ReviewNotEligibleException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                403, "REVIEW_NOT_ELIGIBLE", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(403).body(errorResponse);
+    }
+
+    /**
+     * Handles duplicate review attempts.
+     */
+    @ExceptionHandler(DuplicateReviewException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateReview(DuplicateReviewException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "DUPLICATE_REVIEW", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
 }

@@ -49,9 +49,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/books/*/review-eligibility").authenticated()
                 .requestMatchers("/api/books/**").permitAll()
                 .requestMatchers("/api/categories/**").permitAll()
-                .requestMatchers("/api/authors/**").permitAll() 
+                .requestMatchers("/api/authors/**").permitAll()
+                .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
                 )
