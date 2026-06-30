@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import bookApi from "../api/bookApi";
 import { ShelfRow } from "../component/ShelfBook";
 import { useCart } from "../context/CartContext";
+import reviewApi from "../api/reviewApi";
 
 function Stars({ rating = 0 }) {
   const full = Math.round(rating);
@@ -32,6 +33,11 @@ export default function BookDetailPage() {
   const { user } = useAuth();
   const { addItem } = useCart();
   const [adding, setAdding] = useState(false);
+  const [eligibility, setEligibility] = useState(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -45,7 +51,8 @@ export default function BookDetailPage() {
       Promise.all([
         bookApi.getRelated(id, 6).catch(() => ({ data: [] })),
         bookApi.getReviews(id, { page: 0, size: 10 }).catch(() => ({ data: { content: [] } })),
-      ]).then(([relRes, revRes]) => {
+        user ? reviewApi.checkEligibility(id).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
+      ]).then(([relRes, revRes, eligRes]) => {
         setRelated(relRes.data.map((b, i) => ({
           ...b,
           author: b.authorName,
@@ -55,6 +62,11 @@ export default function BookDetailPage() {
           isNew: i < 2,
         })));
         setReviews(revRes.data.content ?? []);
+        setEligibility(eligRes.data);
+        if (eligRes.data?.hasReviewed && eligRes.data.myReview) {
+          setReviewRating(eligRes.data.myReview.rating);
+          setReviewComment(eligRes.data.myReview.comment ?? "");
+        }
       });
     }).catch(console.error)
       .finally(() => setLoading(false));
@@ -77,6 +89,43 @@ export default function BookDetailPage() {
       alert(err.response?.data?.message || "Could not add to cart");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setSubmittingReview(true);
+    try {
+      let res;
+      if (eligibility.hasReviewed) {
+        res = await reviewApi.update(eligibility.myReview.id, reviewRating, reviewComment);
+      } else {
+        res = await reviewApi.create(id, reviewRating, reviewComment);
+      }
+      setEligibility(prev => ({ ...prev, hasReviewed: true, canReview: false, myReview: res.data }));
+      const eligRes = await reviewApi.checkEligibility(id);
+      setEligibility(eligRes.data);
+      const revRes = await bookApi.getReviews(id, { page: 0, size: 10 });
+      setReviews(revRes.data.content ?? []);
+      setShowReviewForm(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "Could not submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!window.confirm("Delete your review?")) return;
+    try {
+      await reviewApi.remove(eligibility.myReview.id);
+      const eligRes = await reviewApi.checkEligibility(id);
+      setEligibility(eligRes.data);
+      const revRes = await bookApi.getReviews(id, { page: 0, size: 10 });
+      setReviews(revRes.data.content ?? []);
+      setReviewRating(5);
+      setReviewComment("");
+    } catch (err) {
+      alert(err.response?.data?.message || "Could not delete review");
     }
   };
 
@@ -165,6 +214,28 @@ export default function BookDetailPage() {
 
         .bd-empty-state{text-align:center;padding:3rem 0;color:rgba(201,168,76,0.48);font-style:italic;font-size:13px;}
 
+        .bd-write-review-btn{background:none;border:0.5px solid rgba(201,168,76,0.35);padding:8px 18px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.7);cursor:pointer;transition:all 0.25s;}
+        .bd-write-review-btn:hover{border-color:#c9a84c;color:#c9a84c;}
+        .bd-review-actions{display:flex;gap:10px;}
+        .bd-edit-review-btn,.bd-delete-review-btn{background:none;border:0.5px solid rgba(201,168,76,0.25);padding:7px 16px;font-family:Georgia,serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all 0.25s;}
+        .bd-edit-review-btn{color:rgba(201,168,76,0.6);}
+        .bd-edit-review-btn:hover{border-color:#c9a84c;color:#c9a84c;}
+        .bd-delete-review-btn{color:#c0392b;border-color:rgba(192,57,43,0.25);}
+        .bd-delete-review-btn:hover{border-color:#c0392b;background:rgba(192,57,43,0.06);}
+        .bd-review-locked{font-size:12px;font-style:italic;color:rgba(201,168,76,0.4);margin-bottom:1.5rem;text-align:center;padding:1rem;border:0.5px solid rgba(201,168,76,0.1);}
+        .bd-review-form{background:#0F1720;border:0.5px solid rgba(201,168,76,0.18);padding:1.8rem;margin-bottom:2rem;}
+        .bd-review-form-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.55);margin-bottom:10px;font-style:italic;}
+        .bd-review-stars-input{display:flex;gap:8px;}
+        .bd-star-pick{font-size:24px;color:#c9a84c;cursor:pointer;transition:transform 0.15s;}
+        .bd-star-pick:hover{transform:scale(1.15);}
+        .bd-review-textarea{width:100%;min-height:100px;background:rgba(201,168,76,0.04);border:0.5px solid rgba(201,168,76,0.22);padding:12px 14px;font-family:Georgia,serif;font-size:14px;color:rgba(255,245,230,0.85);outline:none;resize:vertical;line-height:1.6;margin-top:6px;}
+        .bd-review-textarea::placeholder{color:rgba(201,168,76,0.3);font-style:italic;}
+        .bd-review-form-actions{display:flex;gap:12px;margin-top:16px;}
+        .bd-review-cancel-btn{background:none;border:0.5px solid rgba(201,168,76,0.22);padding:10px 22px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.55);cursor:pointer;transition:all 0.25s;}
+        .bd-review-cancel-btn:hover{border-color:rgba(201,168,76,0.45);color:#c9a84c;}
+        .bd-review-submit-btn{background:#1a0808;border:0.5px solid #8b2020;padding:10px 24px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;cursor:pointer;transition:all 0.3s;}
+        .bd-review-submit-btn:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
+        .bd-review-cancel-btn:disabled,.bd-review-submit-btn:disabled{opacity:0.4;cursor:default;}
       `}</style>
 
       <div className="bd-root">
@@ -279,7 +350,51 @@ export default function BookDetailPage() {
               <div className="bd-section-kicker">✦ Reader Reflections</div>
               <h2 className="bd-section-title">What Others <em>Found</em></h2>
             </div>
+            {user && eligibility?.canReview && !showReviewForm && (
+              <button className="bd-write-review-btn" onClick={() => setShowReviewForm(true)}>
+                ✦ Write a Review
+              </button>
+            )}
+            {user && eligibility?.hasReviewed && !showReviewForm && (
+              <div className="bd-review-actions">
+                <button className="bd-edit-review-btn" onClick={() => setShowReviewForm(true)}>Edit</button>
+                <button className="bd-delete-review-btn" onClick={handleDeleteReview}>Delete</button>
+              </div>
+            )}
           </div>
+
+          {user && !eligibility?.canReview && !eligibility?.hasReviewed && (
+            <div className="bd-review-locked">✦ Reviews are open to readers who've received this title</div>
+          )}
+
+          {showReviewForm && (
+            <div className="bd-review-form">
+              <div className="bd-review-form-label">Your Rating</div>
+              <div className="bd-review-stars-input">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <span
+                    key={n}
+                    className="bd-star-pick"
+                    style={{ opacity: n <= reviewRating ? 1 : 0.25 }}
+                    onClick={() => setReviewRating(n)}
+                  >★</span>
+                ))}
+              </div>
+              <div className="bd-review-form-label" style={{ marginTop: 16 }}>Your Thoughts</div>
+              <textarea
+                className="bd-review-textarea"
+                value={reviewComment}
+                onChange={e => setReviewComment(e.target.value)}
+                placeholder="Share what this book meant to you…"
+              />
+              <div className="bd-review-form-actions">
+                <button className="bd-review-cancel-btn" onClick={() => setShowReviewForm(false)} disabled={submittingReview}>Cancel</button>
+                <button className="bd-review-submit-btn" onClick={handleSubmitReview} disabled={submittingReview}>
+                  {submittingReview ? "Saving…" : eligibility?.hasReviewed ? "Update Review" : "Submit Review"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {reviews.length === 0 ? (
             <div className="bd-empty-state">✦ No reviews yet — be the first to share your thoughts.</div>
