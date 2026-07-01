@@ -147,4 +147,15 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(409).body(errorResponse);
     }
+
+    /**
+     * Handles incorrect current password on password change.
+     */
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPassword(InvalidPasswordException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                400, "INVALID_PASSWORD", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(400).body(errorResponse);
+    }
 }
