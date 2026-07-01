@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import categoryApi from "../api/categoryApi";
+import { useAuth } from "../context/AuthContext";
 
 /** Converts a category name into a URL-safe slug. */
 function toSlug(name) {
@@ -9,6 +10,7 @@ function toSlug(name) {
 
 export default function Footer() {
   const [categories, setCategories] = useState([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     categoryApi.getAll()
@@ -55,23 +57,28 @@ export default function Footer() {
                 A threshold between the world of the living and the world of the read. We hand-select each title for the reader who notices the margins, the footnotes, the space between words.
               </p>
 
-              <div style={{ fontSize: 9, letterSpacing: "3px", textTransform: "uppercase", color: "rgba(201,168,76,0.28)", marginBottom: 14, fontFamily: "Georgia,serif" }}>✦ &nbsp;Join the Reading Room</div>
-              <p style={{ fontSize: 12, fontStyle: "italic", color: "rgba(255,245,230,0.25)", lineHeight: 1.75, marginBottom: 14, fontFamily: "Georgia,serif" }}>
-                Create an account to save favourites, track orders, and receive curated recommendations.
-              </p>
-              <Link to="/login" style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "#1a0808", border: "0.5px solid #8b2020",
-                padding: "9px 20px", fontFamily: "Georgia,serif",
-                fontSize: 9, letterSpacing: "3px", color: "#c0392b",
-                textTransform: "uppercase", textDecoration: "none",
-                transition: "all 0.3s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#c9a84c"; e.currentTarget.style.color = "#c9a84c"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#8b2020"; e.currentTarget.style.color = "#c0392b"; }}
-              >
-                ⊷ &nbsp;Enter the Shelf&nbsp; ⊶
-              </Link>
+
+              {!user && (
+                <>
+                  <div style={{ fontSize: 9, letterSpacing: "3px", textTransform: "uppercase", color: "rgba(201,168,76,0.28)", marginBottom: 14, fontFamily: "Georgia,serif" }}>✦ &nbsp;Join the Reading Room</div>
+                  <p style={{ fontSize: 12, fontStyle: "italic", color: "rgba(255,245,230,0.25)", lineHeight: 1.75, marginBottom: 14, fontFamily: "Georgia,serif" }}>
+                    Create an account to save favourites, track orders, and receive curated recommendations.
+                  </p>
+                  <Link to="/login" style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    background: "#1a0808", border: "0.5px solid #8b2020",
+                    padding: "9px 20px", fontFamily: "Georgia,serif",
+                    fontSize: 9, letterSpacing: "3px", color: "#c0392b",
+                    textTransform: "uppercase", textDecoration: "none",
+                    transition: "all 0.3s",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#c9a84c"; e.currentTarget.style.color = "#c9a84c"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#8b2020"; e.currentTarget.style.color = "#c0392b"; }}
+                  >
+                    ⊷ &nbsp;Enter the Shelf&nbsp; ⊶
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* COL 2 — Catalogue (category thật từ DB) */}
@@ -102,9 +109,6 @@ export default function Footer() {
                 { label: "Our Story", to: "/about" },
                 { label: "Curation Philosophy", to: "/about#philosophy" },
                 { label: "Reading Notes", to: "/blog" },
-                { label: "Events & Readings", to: "/events" },
-                { label: "Gift Cards", to: "/gift-cards" },
-                { label: "Rare Editions", to: "/rare" },
               ].map(({ label, to }) => (
                 <Link key={label} to={to} className="hp-footer-link">{label}</Link>
               ))}

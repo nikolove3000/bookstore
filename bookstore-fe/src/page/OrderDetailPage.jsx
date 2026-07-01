@@ -25,7 +25,7 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!user) {
-      navigate("/login", { state: { from: location.pathname } });
+      navigate("/login", { state: { from: location.pathname }, replace: true });
       return;
     }
     setLoading(true);

@@ -13,7 +13,7 @@ export default function CartPage() {
 
     useEffect(() => {
         if (!user) {
-            navigate("/login", { state: { from: location.pathname } });
+            navigate("/login", { state: { from: location.pathname }, replace: true });
         }
     }, [user, navigate, location.pathname]);
 

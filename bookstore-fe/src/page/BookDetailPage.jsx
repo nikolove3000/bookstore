@@ -38,6 +38,8 @@ export default function BookDetailPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -74,7 +76,7 @@ export default function BookDetailPage() {
 
   const handleAddToCart = async () => {
     if (!user) {
-      navigate("/login", { state: { from: location.pathname } });
+      navigate("/login", { state: { from: location.pathname }, replace: true });
       return;
     }
     if (!inStock || adding) return;
@@ -115,7 +117,7 @@ export default function BookDetailPage() {
   };
 
   const handleDeleteReview = async () => {
-    if (!window.confirm("Delete your review?")) return;
+    setDeletingReview(true);
     try {
       await reviewApi.remove(eligibility.myReview.id);
       const eligRes = await reviewApi.checkEligibility(id);
@@ -126,6 +128,9 @@ export default function BookDetailPage() {
       setReviewComment("");
     } catch (err) {
       alert(err.response?.data?.message || "Could not delete review");
+    } finally {
+      setDeletingReview(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -236,6 +241,20 @@ export default function BookDetailPage() {
         .bd-review-submit-btn{background:#1a0808;border:0.5px solid #8b2020;padding:10px 24px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;cursor:pointer;transition:all 0.3s;}
         .bd-review-submit-btn:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
         .bd-review-cancel-btn:disabled,.bd-review-submit-btn:disabled{opacity:0.4;cursor:default;}
+
+        .bd-modal-overlay{position:fixed;inset:0;background:rgba(4,2,2,0.82);display:flex;align-items:center;justify-content:center;z-index:2000;animation:bdModalFade 0.2s ease;}
+        @keyframes bdModalFade{from{opacity:0;}to{opacity:1;}}
+        .bd-modal{position:relative;background:#0F1720;border:0.5px solid rgba(201,168,76,0.25);padding:2.5rem;max-width:380px;text-align:center;animation:bdModalIn 0.25s ease;}
+        @keyframes bdModalIn{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+        .bd-modal-icon{font-size:22px;color:#c0392b;opacity:0.6;margin-bottom:14px;}
+        .bd-modal-title{font-size:18px;font-weight:normal;color:rgba(255,245,230,0.92);letter-spacing:0.5px;margin-bottom:14px;font-family:Georgia,serif;}
+        .bd-modal-text{font-size:14px;line-height:1.75;color:rgba(255,245,230,0.62);font-style:italic;margin-bottom:24px;}
+        .bd-modal-actions{display:flex;align-items:center;gap:12px;}
+        .bd-modal-keep{flex:1;background:none;border:0.5px solid rgba(201,168,76,0.25);padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:rgba(201,168,76,0.6);text-transform:uppercase;cursor:pointer;transition:all 0.25s;}
+        .bd-modal-keep:hover{border-color:rgba(201,168,76,0.5);color:#c9a84c;}
+        .bd-modal-confirm{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
+        .bd-modal-confirm:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
+        .bd-modal-confirm:disabled,.bd-modal-keep:disabled{opacity:0.4;cursor:default;}
       `}</style>
 
       <div className="bd-root">
@@ -358,7 +377,7 @@ export default function BookDetailPage() {
             {user && eligibility?.hasReviewed && !showReviewForm && (
               <div className="bd-review-actions">
                 <button className="bd-edit-review-btn" onClick={() => setShowReviewForm(true)}>Edit</button>
-                <button className="bd-delete-review-btn" onClick={handleDeleteReview}>Delete</button>
+                <button className="bd-delete-review-btn" onClick={() => setShowDeleteModal(true)}>Delete</button>
               </div>
             )}
           </div>
@@ -392,6 +411,29 @@ export default function BookDetailPage() {
                 <button className="bd-review-submit-btn" onClick={handleSubmitReview} disabled={submittingReview}>
                   {submittingReview ? "Saving…" : eligibility?.hasReviewed ? "Update Review" : "Submit Review"}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {showDeleteModal && (
+            <div className="bd-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+              <div className="bd-modal" onClick={e => e.stopPropagation()}>
+                {[{ top: 10, left: 12 }, { top: 10, right: 12 }, { bottom: 10, left: 12 }, { bottom: 10, right: 12 }].map((s, i) => (
+                  <span key={i} style={{ position: "absolute", ...s, fontSize: 13, color: "#c9a84c", opacity: 0.4 }}>✦</span>
+                ))}
+                <div className="bd-modal-icon">✦</div>
+                <h3 className="bd-modal-title">Delete Your Review?</h3>
+                <p className="bd-modal-text">
+                  Your reflection on this book will be permanently removed. This action cannot be undone.
+                </p>
+                <div className="bd-modal-actions">
+                  <button className="bd-modal-keep" onClick={() => setShowDeleteModal(false)} disabled={deletingReview}>
+                    Keep Review
+                  </button>
+                  <button className="bd-modal-confirm" onClick={handleDeleteReview} disabled={deletingReview}>
+                    {deletingReview ? "Deleting…" : "Yes, Delete It"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

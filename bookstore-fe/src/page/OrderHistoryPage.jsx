@@ -26,7 +26,7 @@ export default function OrderHistoryPage() {
 
   useEffect(() => {
     if (!user) {
-      navigate("/login", { state: { from: location.pathname } });
+      navigate("/login", { state: { from: location.pathname }, replace: true });
       return;
     }
     setLoading(true);

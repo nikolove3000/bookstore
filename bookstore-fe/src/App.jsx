@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./component/navbar/Navbar";
 import Footer from "./component/Footer";
@@ -11,6 +12,14 @@ import { CartProvider } from "./context/CartContext";
 import CheckoutPage from "./page/CheckoutPage";
 import OrderDetailPage from "./page/OrderDetailPage";
 import OrderHistoryPage from "./page/OrderHistoryPage";
+import AboutPage from "./page/AboutPage";
+import BlogPage from "./page/BlogPage";
+import ShippingPage from "./page/ShippingPage";
+import FaqPage from "./page/FaqPage";
+import ContactPage from "./page/ContactPage";
+import PrivacyPage from "./page/PrivacyPage";
+import TermsPage from "./page/TermsPage";
+import NotFoundPage from "./page/NotFoundPage";
 
 function Layout({ children }) {
   return (
@@ -22,9 +31,18 @@ function Layout({ children }) {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <CartProvider>
           <Routes>
@@ -46,13 +64,20 @@ export default function App() {
             <Route path="/orders" element={<Layout><OrderHistoryPage /></Layout>} />
             <Route path="/profile" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Profile — coming soon</div></Layout>} />
             <Route path="/wishlist" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Wishlist — coming soon</div></Layout>} />
-            <Route path="/about" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>About — coming soon</div></Layout>} />
+            <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+            <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
+            <Route path="/shipping" element={<Layout><ShippingPage /></Layout>} />
+            <Route path="/faq" element={<Layout><FaqPage /></Layout>} />
+            <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
+            <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
+            <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
             <Route path="/search" element={<Layout><BookListPage /></Layout>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
           </Routes>
         </CartProvider>
       </AuthProvider>
+      <ScrollToTop />
     </BrowserRouter>
   );
 }

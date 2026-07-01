@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import categoryApi from "../../api/categoryApi";
 import cartApi from "../../api/cartApi";
 import { useCart } from "../../context/CartContext";
+import bookApi from "../../api/bookApi";
 
 /** Maps pathname → { num, label } */
 const FOLIO_MAP = [
@@ -63,6 +64,8 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState("");
   const [cartPulse, setCartPulse] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
 
   const folio = getFolio(location.pathname);
@@ -70,8 +73,6 @@ export default function Navbar() {
   const catRef = useRef(null);
   const avatarRef = useRef(null);
   const overlayInputRef = useRef(null);
-
-  const closeSearch = () => { setSearchOpen(false); setSearchVal(""); };
 
   /* ── fetch categories từ backend ── */
   useEffect(() => {
@@ -136,6 +137,28 @@ export default function Navbar() {
   };
 
   const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "?";
+
+  useEffect(() => {
+    if (!searchVal.trim() || searchVal.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    const t = setTimeout(() => {
+      bookApi.getAll({ q: searchVal.trim(), size: 6 })
+        .then(res => setSearchResults(res.data.content))
+        .catch(console.error)
+        .finally(() => setSearchLoading(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchVal]);
+
+  const closeSearch = () => { setSearchOpen(false); setSearchVal(""); setSearchResults([]); };
+
+  const goToBook = (bookId) => {
+    navigate(`/books/${bookId}`);
+    closeSearch();
+  };
 
   /* ── ticker items (doubled for seamless loop) ── */
   const tickerItems = [...TICKER_BOOKS, ...TICKER_BOOKS];
@@ -391,6 +414,19 @@ export default function Navbar() {
         .nav-ticker-title  { font-size: 10px; color: rgba(255,245,230,0.68); font-style: italic; letter-spacing: 0.5px; }
         .nav-ticker-author { font-size: 9px; color: rgba(201,168,76,0.62); letter-spacing: 1px; }
         .nav-ticker-gem    { font-size: 8px; color: rgba(201,168,76,0.40); }
+
+        .nav-search-dropdown{position:absolute;top:100%;left:0;right:0;background:#0F1720;border-top:0.5px solid rgba(201,168,76,0.15);border-bottom:0.5px solid rgba(201,168,76,0.2);max-height:420px;overflow-y:auto;z-index:11;animation:navSearchDropIn 0.2s ease;}
+        @keyframes navSearchDropIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+        .nav-search-dropdown-empty{padding:24px;text-align:center;font-size:13px;font-style:italic;color:rgba(201,168,76,0.4);font-family:Georgia,serif;}
+        .nav-search-result{display:flex;align-items:center;gap:14px;padding:12px 1.75rem;cursor:pointer;transition:background 0.15s;border-bottom:0.5px solid rgba(201,168,76,0.06);}
+        .nav-search-result:hover{background:rgba(201,168,76,0.05);}
+        .nav-search-result-cover{width:40px;height:58px;object-fit:cover;display:block;border:0.5px solid rgba(201,168,76,0.18);flex-shrink:0;}
+        .nav-search-result-fallback{width:40px;height:58px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#14171c 0%,#0c0a0a 100%);border:0.5px solid rgba(201,168,76,0.18);font-size:14px;color:rgba(201,168,76,0.35);flex-shrink:0;}
+        .nav-search-result-title{font-size:14px;color:rgba(255,245,230,0.85);line-height:1.3;margin-bottom:3px;font-family:Georgia,serif;}
+        .nav-search-result-author{font-size:12px;font-style:italic;color:rgba(201,168,76,0.55);font-family:Georgia,serif;}
+        .nav-search-result-price{font-size:13px;color:#c9a84c;letter-spacing:0.5px;margin-left:auto;flex-shrink:0;font-family:Georgia,serif;}
+        .nav-search-view-all{padding:14px 1.75rem;text-align:center;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,0.55);cursor:pointer;transition:color 0.2s;font-style:italic;font-family:Georgia,serif;}
+        .nav-search-view-all:hover{color:#c9a84c;}
       `}</style>
 
       <div className="navbar-root">
@@ -520,12 +556,44 @@ export default function Navbar() {
                 value={searchVal}
                 onChange={e => setSearchVal(e.target.value)}
                 placeholder="Search across the entire shelf…"
+                autoComplete="off"
               />
-              <span className="nav-overlay-hint">press enter</span>
+              <span className="nav-overlay-hint">press enter for full results</span>
             </form>
             <button className="nav-overlay-close" onClick={closeSearch}>
               ✕ &nbsp;Close
             </button>
+
+            {/* live dropdown */}
+            {searchVal.trim().length >= 2 && (
+              <div className="nav-search-dropdown">
+                {searchLoading ? (
+                  <div className="nav-search-dropdown-empty">✦ Searching…</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="nav-search-dropdown-empty">No titles found for "{searchVal}"</div>
+                ) : (
+                  <>
+                    {searchResults.map(book => (
+                      <div key={book.id} className="nav-search-result" onClick={() => goToBook(book.id)}>
+                        {book.coverUrl ? (
+                          <img className="nav-search-result-cover" src={book.coverUrl} alt={book.title} />
+                        ) : (
+                          <div className="nav-search-result-fallback">✦</div>
+                        )}
+                        <div>
+                          <div className="nav-search-result-title">{book.title}</div>
+                          <div className="nav-search-result-author">{book.authorName}</div>
+                        </div>
+                        <span className="nav-search-result-price">${Number(book.price).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="nav-search-view-all" onClick={handleSearch}>
+                      View all results for "{searchVal}" →
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
         </div>

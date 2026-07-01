@@ -16,7 +16,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!user) {
-      navigate("/login", { state: { from: location.pathname } });
+      navigate("/login", { state: { from: location.pathname }, replace: true });
     }
   }, [user, navigate, location.pathname]);
 
