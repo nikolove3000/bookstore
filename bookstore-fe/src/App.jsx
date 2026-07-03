@@ -20,6 +20,8 @@ import ContactPage from "./page/ContactPage";
 import PrivacyPage from "./page/PrivacyPage";
 import TermsPage from "./page/TermsPage";
 import NotFoundPage from "./page/NotFoundPage";
+import WishlistPage from "./page/WishlistPage";
+import ProfilePage from "./page/ProfilePage";
 
 function Layout({ children }) {
   return (
@@ -62,8 +64,8 @@ export default function App() {
             <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
             <Route path="/orders/:id" element={<Layout><OrderDetailPage /></Layout>} />
             <Route path="/orders" element={<Layout><OrderHistoryPage /></Layout>} />
-            <Route path="/profile" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Profile — coming soon</div></Layout>} />
-            <Route path="/wishlist" element={<Layout><div style={{ padding: "120px 4rem", color: "#c9a84c", fontFamily: "Georgia,serif" }}>Wishlist — coming soon</div></Layout>} />
+            <Route path="/profile" element={<Layout><ProfilePage/></Layout>} />
+            <Route path="/wishlist" element={<Layout><WishlistPage/></Layout>} />
             <Route path="/about" element={<Layout><AboutPage /></Layout>} />
             <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
             <Route path="/shipping" element={<Layout><ShippingPage /></Layout>} />
