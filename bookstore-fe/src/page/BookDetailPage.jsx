@@ -6,6 +6,7 @@ import bookApi from "../api/bookApi";
 import { ShelfRow } from "../component/ShelfBook";
 import { useCart } from "../context/CartContext";
 import reviewApi from "../api/reviewApi";
+import { wishlistApi } from "../api/userApi";
 
 function Stars({ rating = 0 }) {
   const full = Math.round(rating);
@@ -40,6 +41,8 @@ export default function BookDetailPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingReview, setDeletingReview] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wishlistBusy, setWishlistBusy] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -54,7 +57,8 @@ export default function BookDetailPage() {
         bookApi.getRelated(id, 6).catch(() => ({ data: [] })),
         bookApi.getReviews(id, { page: 0, size: 10 }).catch(() => ({ data: { content: [] } })),
         user ? reviewApi.checkEligibility(id).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
-      ]).then(([relRes, revRes, eligRes]) => {
+        user ? wishlistApi.check(id).catch(() => ({ data: { saved: false } })) : Promise.resolve({ data: { saved: false } }),
+      ]).then(([relRes, revRes, eligRes, wlRes]) => {
         setRelated(relRes.data.map((b, i) => ({
           ...b,
           author: b.authorName,
@@ -69,6 +73,7 @@ export default function BookDetailPage() {
           setReviewRating(eligRes.data.myReview.rating);
           setReviewComment(eligRes.data.myReview.comment ?? "");
         }
+        setInWishlist(wlRes.data.saved ?? false);
       });
     }).catch(console.error)
       .finally(() => setLoading(false));
@@ -131,6 +136,27 @@ export default function BookDetailPage() {
     } finally {
       setDeletingReview(false);
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+    setWishlistBusy(true);
+    try {
+      if (inWishlist) {
+        await wishlistApi.remove(book.id);
+        setInWishlist(false);
+      } else {
+        await wishlistApi.add(book.id);
+        setInWishlist(true);
+      }
+    } catch (err) {
+      console.error("Wishlist error", err);
+    } finally {
+      setWishlistBusy(false);
     }
   };
 
@@ -255,6 +281,11 @@ export default function BookDetailPage() {
         .bd-modal-confirm{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
         .bd-modal-confirm:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
         .bd-modal-confirm:disabled,.bd-modal-keep:disabled{opacity:0.4;cursor:default;}
+
+        .bd-wishlist-btn{background:none;border:0.5px solid rgba(201,168,76,0.25);width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:all 0.25s;flex-shrink:0;}
+        .bd-wishlist-btn:hover{border-color:rgba(201,168,76,0.6);}
+        .bd-wishlist-btn.saved{border-color:rgba(201,168,76,0.5);color:#c9a84c;}
+        .bd-wishlist-btn:disabled{opacity:0.35;cursor:default;}
       `}</style>
 
       <div className="bd-root">
@@ -321,14 +352,16 @@ export default function BookDetailPage() {
                 onClick={handleAddToCart}
                 disabled={(!inStock && !!user) || adding}
               >
-                {!user
-                  ? "Login to unlock"
-                  : added
-                    ? "✓ Added to Cart"
-                    : adding
-                      ? "Adding..."
-                      : "⊷ Add to Cart ⊶"}
+                {!user ? "Login to unlock" : added ? "✓ Added to Cart" : adding ? "Adding..." : "⊷ Add to Cart ⊶"}
               </button>
+              <button
+                className={`bd-wishlist-btn ${inWishlist ? "saved" : ""}`}
+                onClick={handleToggleWishlist}
+                disabled={wishlistBusy}
+                title={inWishlist ? "Remove from Wishlist" : "Save to Wishlist"}
+              >
+                {inWishlist ? "♥" : "♡"}
+              </button> 
             </div>
 
             <p className="bd-desc">{book.description}</p>
