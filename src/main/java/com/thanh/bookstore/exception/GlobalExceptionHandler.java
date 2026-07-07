@@ -158,4 +158,27 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(400).body(errorResponse);
     }
+
+    /**
+     * Handles duplicate ISBN on book create/update.
+     */
+    @ExceptionHandler(jakarta.persistence.EntityExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEntityExists(jakarta.persistence.EntityExistsException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "ENTITY_EXISTS", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
+
+    /**
+     * Handles deletion attempts blocked by foreign key constraints.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "REFERENCED_ENTITY", "Cannot delete: this book is referenced by existing orders or reviews", LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
 }

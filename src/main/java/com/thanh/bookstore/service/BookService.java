@@ -217,7 +217,7 @@ public class BookService {
                 : null;
 
         return new BookDetailDto(
-                book.getId(),
+                book.getId(),  
                 book.getTitle(),
                 book.getIsbn(),
                 book.getPrice(),
