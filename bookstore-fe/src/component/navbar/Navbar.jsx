@@ -527,6 +527,15 @@ export default function Navbar() {
                       </svg>
                       Wishlist
                     </Link>
+                    {user?.role?.includes("ADMIN") && (
+                      <Link to="/admin/orders" className="nav-avatar-item">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                          <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+                        </svg>
+                        Admin Panel
+                      </Link>
+                    )}
                     <div className="nav-avatar-sep" />
                     <button className="nav-avatar-item danger" onClick={handleLogout}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

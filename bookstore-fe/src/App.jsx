@@ -22,6 +22,7 @@ import TermsPage from "./page/TermsPage";
 import NotFoundPage from "./page/NotFoundPage";
 import WishlistPage from "./page/WishlistPage";
 import ProfilePage from "./page/ProfilePage";
+import AdminOrderPage from "./page/AdminOrderPage";
 
 function Layout({ children }) {
   return (
@@ -64,8 +65,8 @@ export default function App() {
             <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
             <Route path="/orders/:id" element={<Layout><OrderDetailPage /></Layout>} />
             <Route path="/orders" element={<Layout><OrderHistoryPage /></Layout>} />
-            <Route path="/profile" element={<Layout><ProfilePage/></Layout>} />
-            <Route path="/wishlist" element={<Layout><WishlistPage/></Layout>} />
+            <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
+            <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
             <Route path="/about" element={<Layout><AboutPage /></Layout>} />
             <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
             <Route path="/shipping" element={<Layout><ShippingPage /></Layout>} />
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
             <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
             <Route path="/search" element={<Layout><BookListPage /></Layout>} />
+            <Route path="/admin/orders" element={<Layout><AdminOrderPage /></Layout>} />
 
             <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
           </Routes>
