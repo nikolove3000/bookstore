@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/authors/**").permitAll()
                 .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/publishers/**").permitAll()
                 .anyRequest().authenticated()
                 )
                 .sessionManagement(session
