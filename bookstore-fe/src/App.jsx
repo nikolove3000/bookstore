@@ -23,6 +23,8 @@ import NotFoundPage from "./page/NotFoundPage";
 import WishlistPage from "./page/WishlistPage";
 import ProfilePage from "./page/ProfilePage";
 import AdminOrderPage from "./page/AdminOrderPage";
+import AdminBookPage from "./page/AdminBookPage";
+import AdminUserPage from "./page/AdminUserPage";
 
 function Layout({ children }) {
   return (
@@ -76,6 +78,8 @@ export default function App() {
             <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
             <Route path="/search" element={<Layout><BookListPage /></Layout>} />
             <Route path="/admin/orders" element={<Layout><AdminOrderPage /></Layout>} />
+            <Route path="/admin/books" element={<Layout><AdminBookPage /></Layout>} />
+            <Route path="/admin/users" element={<Layout><AdminUserPage /></Layout>} />
 
             <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
           </Routes>

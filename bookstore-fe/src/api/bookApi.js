@@ -10,6 +10,11 @@ const bookApi = {
   getByAuthor: (authorId, params) => axiosClient.get(`/books/author/${authorId}`, { params }),
   getNewArrivals: (limit = 6) => axiosClient.get('/books/new-arrivals', { params: { limit } }),
   getFeatured: (limit = 3) => axiosClient.get('/books/featured', { params: { limit } }),
+
+  // ── Admin ──
+  createBook: (data) => axiosClient.post('/admin/books', data),
+  updateBook: (id, data) => axiosClient.put(`/admin/books/${id}`, data),
+  deleteBook: (id) => axiosClient.delete(`/admin/books/${id}`),
 };
 
 export default bookApi;
