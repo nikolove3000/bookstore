@@ -77,12 +77,14 @@ const LoginForm = ({ dustRef, currentBook, displayedBg, bgOpacity, onFlip }) => 
           {error && <p className="text-xs mb-3 text-center" style={{ color: "#c0392b" }}>{error}</p>}
 
           <div className="text-right mb-4">
-            <span className="text-xs italic cursor-pointer"
-              style={{ color: "#4a3528" }}
+            <a
+              href="mailto:support@theliminal shelf.com?subject=Password%20Reset%20Request"
+              className="text-xs italic cursor-pointer"
+              style={{ color: "#4a3528", textDecoration: "none" }}
               onMouseEnter={e => e.target.style.color = "#c9a84c"}
               onMouseLeave={e => e.target.style.color = "#4a3528"}>
               Forgot your key?
-            </span>
+            </a>
           </div>
 
           <button type="submit" disabled={loading}

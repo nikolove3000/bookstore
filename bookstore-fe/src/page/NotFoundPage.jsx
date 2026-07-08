@@ -39,7 +39,7 @@ export default function NotFoundPage() {
         </div>
 
         <div className="nf-content">
-          <div className="nf-folio">Folio ✦</div>
+          <div className="nf-folio">Folio 404</div>
 
           <div className="nf-divider">
             <div className="nf-divider-line" />
