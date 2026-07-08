@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,28 +15,32 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.thanh.bookstore.dto.AdminUserDto;
 import com.thanh.bookstore.dto.UpdateUserRoleRequest;
+import com.thanh.bookstore.entity.User;
 import com.thanh.bookstore.service.AdminUserService;
+import com.thanh.bookstore.service.UserService;
 
 import jakarta.validation.Valid;
 
 /**
  * REST controller for admin user management.
  *
- * <p>All endpoints require ROLE_ADMIN — enforced by SecurityConfig.</p>
+ * <p>
+ * All endpoints require ROLE_ADMIN — enforced by SecurityConfig.</p>
  */
 @RestController
 @RequestMapping("/api/admin/users")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
+    private final UserService userService;
 
-    public AdminUserController(AdminUserService adminUserService) {
+    public AdminUserController(AdminUserService adminUserService, UserService userService) {
         this.adminUserService = adminUserService;
+        this.userService = userService;
     }
 
     /**
-     * GET /api/admin/users?page=0&size=20
-     * Returns paginated list of all users.
+     * GET /api/admin/users?page=0&size=20 Returns paginated list of all users.
      */
     @GetMapping
     public ResponseEntity<Page<AdminUserDto>> getAllUsers(
@@ -43,13 +49,20 @@ public class AdminUserController {
     }
 
     /**
-     * PATCH /api/admin/users/{id}/role
-     * Updates a user's role.
+     * PATCH /api/admin/users/{id}/role Updates a user's role.
      */
     @PatchMapping("/{id}/role")
     public ResponseEntity<AdminUserDto> updateRole(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRoleRequest request) {
-        return ResponseEntity.ok(adminUserService.updateRole(id, request.getRole()));
+        return ResponseEntity.ok(adminUserService.updateRole(id, request.getRole(), currentUser()));
+    }
+
+    // ── private ──────────────────────────────────────────
+
+    private User currentUser() {
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        return userService.findByUsername(userDetails.getUsername());
     }
 }

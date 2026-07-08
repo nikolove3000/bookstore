@@ -192,4 +192,15 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(500).body(errorResponse);
     }
+
+    /**
+     * Handles unsafe role change attempts.
+     */
+    @ExceptionHandler(InvalidRoleChangeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRoleChange(InvalidRoleChangeException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                409, "INVALID_ROLE_CHANGE", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(409).body(errorResponse);
+    }
 }
