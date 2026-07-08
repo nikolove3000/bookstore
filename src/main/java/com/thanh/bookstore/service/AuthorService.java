@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.thanh.bookstore.dto.AuthorDto;
+import com.thanh.bookstore.dto.CreateAuthorRequest;
 import com.thanh.bookstore.entity.Author;
 import com.thanh.bookstore.repository.AuthorRepository;
 
@@ -22,7 +23,9 @@ public class AuthorService {
         this.authorRepository = authorRepository;
     }
 
-    /** Retrieves all authors */
+    /**
+     * Retrieves all authors
+     */
     public List<AuthorDto> getAllAuthors() {
         return authorRepository.findAll()
                 .stream()
@@ -30,7 +33,9 @@ public class AuthorService {
                 .toList();
     }
 
-    /** Retrieves an author by their ID */
+    /**
+     * Retrieves an author by their ID
+     */
     public AuthorDto getAuthorById(Long id) {
         Author author = authorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Author not found with id: " + id));
@@ -38,7 +43,9 @@ public class AuthorService {
     }
 
     /**
-     * Converts an Author entity to an AuthorDto, including the count of books written by the author.
+     * Converts an Author entity to an AuthorDto, including the count of books
+     * written by the author.
+     *
      * @param author
      * @return
      */
@@ -49,6 +56,15 @@ public class AuthorService {
                 author.getName(),
                 author.getBio(),
                 bookCount);
+    }
+
+    @Transactional
+    public AuthorDto createAuthor(CreateAuthorRequest request) {
+        Author author = new Author();
+        author.setName(request.getName());
+        author.setBio(request.getBio());
+        Author saved = authorRepository.save(author);
+        return toDto(saved);
     }
 
 }

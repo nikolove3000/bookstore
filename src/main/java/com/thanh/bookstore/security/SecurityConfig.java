@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -51,11 +52,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/books/*/review-eligibility").authenticated()
                 .requestMatchers("/api/books/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers("/api/categories/**").permitAll()
-                .requestMatchers("/api/authors/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll() 
+                .requestMatchers(HttpMethod.POST, "/api/authors/**").hasRole("ADMIN")
                 .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/publishers/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/publishers/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
                 )
                 .sessionManagement(session

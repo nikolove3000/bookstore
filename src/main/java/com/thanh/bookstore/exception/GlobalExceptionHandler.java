@@ -181,4 +181,15 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(409).body(errorResponse);
     }
+
+    /**
+     * Handles file upload failures.
+     */
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ErrorResponse> handleFileUpload(FileUploadException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                500, "FILE_UPLOAD_FAILED", e.getMessage(), LocalDateTime.now()
+        );
+        return ResponseEntity.status(500).body(errorResponse);
+    }
 }

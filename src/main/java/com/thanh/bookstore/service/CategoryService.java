@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.thanh.bookstore.dto.CategoryDto;
+import com.thanh.bookstore.dto.CreateCategoryRequest;
 import com.thanh.bookstore.entity.Category;
 import com.thanh.bookstore.repository.CategoryRepository;
 
-/** Service class for managing Category entities. */
+/**
+ * Service class for managing Category entities.
+ */
 @Service
 @Transactional(readOnly = true)
 public class CategoryService {
@@ -22,40 +25,51 @@ public class CategoryService {
 
     /**
      * Get a list of all categories in the bookstore.
+     *
      * @return
      */
     public List<CategoryDto> getAllCategories() {
 
         return categoryRepository.findAll()
-        .stream()
-        .map(this::toDto)
-        .toList();
+                .stream()
+                .map(this::toDto)
+                .toList();
     }
 
     /**
      * Get a category by its unique identifier.
+     *
      * @param id
      * @return
      */
     public CategoryDto getCategoryById(Long id) {
-        
+
         Category category = categoryRepository.findById(id)
-        .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         return toDto(category);
     }
-    
+
     /**
      * Convert a Category entity to a CategoryDto.
+     *
      * @param category
      * @return
      */
     private CategoryDto toDto(Category category) {
-        
+
         Long bookCount = categoryRepository.countBooksByCategoryId(category.getId());
         return new CategoryDto(
-            category.getId(),
-            category.getName(),
-            bookCount
+                category.getId(),
+                category.getName(),
+                bookCount
         );
+    }
+
+    @Transactional
+    public CategoryDto createCategory(CreateCategoryRequest request) {
+        Category category = new Category();
+        category.setName(request.getName());
+        Category saved = categoryRepository.save(category);
+        return toDto(saved);
     }
 }
