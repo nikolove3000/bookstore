@@ -1,163 +1,353 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import bookApi from "../api/bookApi";
 import authorApi from "../api/authorApi";
 import publisherApi from "../api/publisherApi";
 import categoryApi from "../api/categoryApi";
+import uploadApi from "../api/uploadApi";
 
 const PAGE_SIZE = 20;
 
 const EMPTY_FORM = {
-  title: "", isbn: "", price: "", stockQuantity: "", coverUrl: "",
-  publicationYear: "", description: "", authorId: "", publisherId: "", categoryIds: [],
+    title: "", isbn: "", price: "", stockQuantity: "", coverUrl: "",
+    publicationYear: "", description: "", authorId: "", publisherId: "", categoryIds: [],
 };
 
 export default function AdminBookPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-  const [books, setBooks] = useState([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
+    const [books, setBooks] = useState([]);
+    const [totalElements, setTotalElements] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [page, setPage] = useState(0);
+    const [loading, setLoading] = useState(true);
 
-  const [authors, setAuthors] = useState([]);
-  const [publishers, setPublishers] = useState([]);
-  const [categories, setCategories] = useState([]);
+    const [authors, setAuthors] = useState([]);
+    const [publishers, setPublishers] = useState([]);
+    const [categories, setCategories] = useState([]);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
 
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    if (!user) { navigate("/login", { state: { from: location.pathname } }); return; }
-    if (!user.role?.includes("ADMIN")) { navigate("/"); return; }
-  }, [user, navigate, location.pathname]);
+    const [showCategoryForm, setShowCategoryForm] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [creatingCategory, setCreatingCategory] = useState(false);
+    const [categoryError, setCategoryError] = useState(null);
 
-  useEffect(() => {
-    Promise.all([authorApi.getAll(), publisherApi.getAll(), categoryApi.getAll()])
-      .then(([aRes, pRes, cRes]) => {
-        setAuthors(aRes.data);
-        setPublishers(pRes.data);
-        setCategories(cRes.data);
-      })
-      .catch(console.error);
-  }, []);
+    useEffect(() => {
+        if (!user) { navigate("/login", { state: { from: location.pathname } }); return; }
+        if (!user.role?.includes("ADMIN")) { navigate("/"); return; }
+    }, [user, navigate, location.pathname]);
 
-  const fetchBooks = () => {
-    setLoading(true);
-    bookApi.getAll({ page, size: PAGE_SIZE, sort: "createdAt,desc" })
-      .then(res => {
-        setBooks(res.data.content);
-        setTotalElements(res.data.totalElements);
-        setTotalPages(res.data.totalPages);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+    useEffect(() => {
+        Promise.all([authorApi.getAll(), publisherApi.getAll(), categoryApi.getAll()])
+            .then(([aRes, pRes, cRes]) => {
+                setAuthors(aRes.data);
+                setPublishers(pRes.data);
+                setCategories(cRes.data);
+            })
+            .catch(console.error);
+    }, []);
 
-  useEffect(fetchBooks, [page]);
+    const fetchBooks = () => {
+        setLoading(true);
+        bookApi.getAll({ page, size: PAGE_SIZE, sort: "createdAt,desc" })
+            .then(res => {
+                setBooks(res.data.content);
+                setTotalElements(res.data.totalElements);
+                setTotalPages(res.data.totalPages);
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    };
 
-  const openCreateForm = () => {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-    setShowForm(true);
-  };
+    useEffect(fetchBooks, [page]);
 
-  const openEditForm = async (book) => {
-    try {
-      const res = await bookApi.getById(book.id);
-      const b = res.data;
-      setEditingId(b.id);
-      setForm({
-        title: b.title ?? "",
-        isbn: b.isbn ?? "",
-        price: b.price ?? "",
-        stockQuantity: b.stockQuantity ?? "",
-        coverUrl: b.coverUrl ?? "",
-        publicationYear: b.publicationYear ?? "",
-        description: b.description ?? "",
-        authorId: b.author?.id ?? "",
-        publisherId: b.publisher?.id ?? "",
-        categoryIds: b.categories?.map(c => c.id) ?? [],
-      });
-      setFormError(null);
-      setShowForm(true);
-    } catch (err) {
-      alert("Could not load book details");
+    const openCreateForm = () => {
+        setEditingId(null);
+        setForm(EMPTY_FORM);
+        setFormError(null);
+        setShowForm(true);
+    };
+
+    const openEditForm = async (book) => {
+        try {
+            const res = await bookApi.getById(book.id);
+            const b = res.data;
+            setEditingId(b.id);
+            setForm({
+                title: b.title ?? "",
+                isbn: b.isbn ?? "",
+                price: b.price ?? "",
+                stockQuantity: b.stockQuantity ?? "",
+                coverUrl: b.coverUrl ?? "",
+                publicationYear: b.publicationYear ?? "",
+                description: b.description ?? "",
+                authorId: b.author?.id ?? "",
+                publisherId: b.publisher?.id ?? "",
+                categoryIds: b.categories?.map(c => c.id) ?? [],
+            });
+            setFormError(null);
+            setShowForm(true);
+        } catch (err) {
+            alert("Could not load book details");
+        }
+    };
+
+    const handleCoverUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        setUploadError(null);
+        try {
+            const res = await uploadApi.uploadCover(file);
+            setForm(prev => ({ ...prev, coverUrl: res.data.url }));
+        } catch (err) {
+            setUploadError(err.response?.data?.message || "Could not upload image");
+        } finally {
+            setUploading(false);
+            e.target.value = ""; // reset input để chọn lại cùng 1 file được
+        }
+    };
+
+    const toggleCategory = (catId) => {
+        setForm(prev => ({
+            ...prev,
+            categoryIds: prev.categoryIds.includes(catId)
+                ? prev.categoryIds.filter(id => id !== catId)
+                : [...prev.categoryIds, catId],
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setFormError(null);
+        setSaving(true);
+        try {
+            const payload = {
+                ...form,
+                price: parseFloat(form.price),
+                stockQuantity: parseInt(form.stockQuantity, 10),
+                publicationYear: form.publicationYear ? parseInt(form.publicationYear, 10) : null,
+                authorId: form.authorId || null,
+                publisherId: form.publisherId || null,
+            };
+            if (editingId) {
+                await bookApi.updateBook(editingId, payload);
+            } else {
+                await bookApi.createBook(payload);
+            }
+            setShowForm(false);
+            fetchBooks();
+        } catch (err) {
+            setFormError(err.response?.data?.message || "Could not save book");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        setDeleting(true);
+        try {
+            await bookApi.deleteBook(deleteTarget.id);
+            setDeleteTarget(null);
+            fetchBooks();
+        } catch (err) {
+            alert(err.response?.data?.message || "Could not delete book");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) {
+            setCategoryError("Name is required");
+            return;
+        }
+        setCreatingCategory(true);
+        setCategoryError(null);
+        try {
+            const res = await categoryApi.create({ name: newCategoryName.trim() });
+            setCategories(prev => [...prev, res.data]);
+            setForm(prev => ({ ...prev, categoryIds: [...prev.categoryIds, res.data.id] }));
+            setNewCategoryName("");
+            setShowCategoryForm(false);
+        } catch (err) {
+            setCategoryError(err.response?.data?.message || "Could not create category");
+        } finally {
+            setCreatingCategory(false);
+        }
+    };
+
+    function CustomSelect({ value, onChange, options, placeholder = "— Select —", onCreateNew, createLabel = "Add New" }) {
+        const [open, setOpen] = useState(false);
+        const [search, setSearch] = useState("");
+        const [showCreateForm, setShowCreateForm] = useState(false);
+        const wrapperRef = useRef(null);
+        const searchRef = useRef(null);
+
+        useEffect(() => {
+            const handler = (e) => {
+                if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                    setOpen(false);
+                    setShowCreateForm(false);
+                    setSearch("");
+                }
+            };
+            document.addEventListener("mousedown", handler);
+            return () => document.removeEventListener("mousedown", handler);
+        }, []);
+
+        useEffect(() => {
+            if (open && searchRef.current) searchRef.current.focus();
+        }, [open]);
+
+        const selected = options.find(o => String(o.id) === String(value));
+        const filtered = options.filter(o =>
+            o.name.toLowerCase().includes(search.toLowerCase())
+        );
+
+        return (
+            <div className="cs-wrapper" ref={wrapperRef}>
+                <button type="button" className="cs-trigger" onClick={() => setOpen(o => !o)}>
+                    <span className={selected ? "" : "cs-placeholder"}>
+                        {selected ? selected.name : placeholder}
+                    </span>
+                    <span className={`cs-chevron ${open ? "open" : ""}`}>▾</span>
+                </button>
+
+                {open && (
+                    <div className="cs-menu">
+                        {!showCreateForm ? (
+                            <>
+                                <div className="cs-search-row">
+                                    <input
+                                        ref={searchRef}
+                                        className="cs-search-input"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        placeholder="Search…"
+                                        onClick={e => e.stopPropagation()}
+                                    />
+                                </div>
+
+                                <div className="cs-option" onClick={() => { onChange(""); setOpen(false); setSearch(""); }}>
+                                    {placeholder}
+                                </div>
+
+                                {filtered.length === 0 ? (
+                                    <div className="cs-empty">No matches</div>
+                                ) : (
+                                    filtered.map(o => (
+                                        <div
+                                            key={o.id}
+                                            className={`cs-option ${String(o.id) === String(value) ? "active" : ""}`}
+                                            onClick={() => { onChange(o.id); setOpen(false); setSearch(""); }}
+                                        >
+                                            {o.name}
+                                        </div>
+                                    ))
+                                )}
+
+                                {onCreateNew && (
+                                    <div className="cs-create-btn" onClick={() => setShowCreateForm(true)}>
+                                        + {createLabel}
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <QuickCreateForm
+                                createLabel={createLabel}
+                                onCancel={() => setShowCreateForm(false)}
+                                onCreate={async (fields) => {
+                                    const created = await onCreateNew(fields);
+                                    onChange(created.id);
+                                    setShowCreateForm(false);
+                                    setOpen(false);
+                                    setSearch("");
+                                }}
+                            />
+                        )}
+                    </div>
+                )}
+            </div>
+        );
     }
-  };
 
-  const toggleCategory = (catId) => {
-    setForm(prev => ({
-      ...prev,
-      categoryIds: prev.categoryIds.includes(catId)
-        ? prev.categoryIds.filter(id => id !== catId)
-        : [...prev.categoryIds, catId],
-    }));
-  };
+    function QuickCreateForm({ createLabel, onCancel, onCreate }) {
+        const [name, setName] = useState("");
+        const [extra, setExtra] = useState("");
+        const [saving, setSaving] = useState(false);
+        const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError(null);
-    setSaving(true);
-    try {
-      const payload = {
-        ...form,
-        price: parseFloat(form.price),
-        stockQuantity: parseInt(form.stockQuantity, 10),
-        publicationYear: form.publicationYear ? parseInt(form.publicationYear, 10) : null,
-        authorId: form.authorId || null,
-        publisherId: form.publisherId || null,
-      };
-      if (editingId) {
-        await bookApi.updateBook(editingId, payload);
-      } else {
-        await bookApi.createBook(payload);
-      }
-      setShowForm(false);
-      fetchBooks();
-    } catch (err) {
-      setFormError(err.response?.data?.message || "Could not save book");
-    } finally {
-      setSaving(false);
+        const isAuthor = createLabel.toLowerCase().includes("author");
+
+        const handleSave = async () => {
+            if (!name.trim()) { setError("Name is required"); return; }
+            setSaving(true);
+            setError(null);
+            try {
+                const payload = isAuthor
+                    ? { name: name.trim(), bio: extra.trim() || null }
+                    : { name: name.trim(), address: extra.trim() || null, phone: null };
+                await onCreate(payload);
+            } catch (err) {
+                setError(err.response?.data?.message || "Could not create");
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        return (
+            <div className="cs-create-form" onClick={e => e.stopPropagation()}>
+                <div className="cs-create-title">New {isAuthor ? "Author" : "Publisher"}</div>
+                <input
+                    className="cs-create-input"
+                    placeholder="Name"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    autoFocus
+                />
+                <input
+                    className="cs-create-input"
+                    placeholder={isAuthor ? "Bio (optional)" : "Address (optional)"}
+                    value={extra}
+                    onChange={e => setExtra(e.target.value)}
+                />
+                {error && <div className="cs-create-error">{error}</div>}
+                <div className="cs-create-actions">
+                    <button type="button" className="cs-create-cancel" onClick={onCancel} disabled={saving}>Cancel</button>
+                    <button type="button" className="cs-create-save" onClick={handleSave} disabled={saving}>
+                        {saving ? "Saving…" : "Create"}
+                    </button>
+                </div>
+            </div>
+        );
     }
-  };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await bookApi.deleteBook(deleteTarget.id);
-      setDeleteTarget(null);
-      fetchBooks();
-    } catch (err) {
-      alert(err.response?.data?.message || "Could not delete book");
-    } finally {
-      setDeleting(false);
+    const pages = [];
+    if (totalPages > 0) {
+        pages.push(0);
+        for (let p = Math.max(1, page - 1); p <= Math.min(totalPages - 2, page + 1); p++) {
+            if (!pages.includes(p)) pages.push(p);
+        }
+        if (totalPages > 1) pages.push(totalPages - 1);
     }
-  };
 
-  const pages = [];
-  if (totalPages > 0) {
-    pages.push(0);
-    for (let p = Math.max(1, page - 1); p <= Math.min(totalPages - 2, page + 1); p++) {
-      if (!pages.includes(p)) pages.push(p);
-    }
-    if (totalPages > 1) pages.push(totalPages - 1);
-  }
-
-  return (
-    <>
-      <style>{`
+    return (
+        <>
+            <style>{`
         .abk-root{min-height:100vh;background:#0d0b0b;font-family:Georgia,serif;color:rgba(255,245,230,0.85);padding:120px 3rem 5rem;}
         .abk-inner{max-width:1200px;margin:0 auto;}
         .abk-breadcrumb{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.65);margin-bottom:2rem;}
@@ -211,13 +401,43 @@ export default function AdminBookPage() {
         .abk-modal-title{font-size:20px;color:rgba(255,245,230,0.9);letter-spacing:0.3px;margin-bottom:1.5rem;font-weight:normal;}
         .abk-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.4rem;}
         .abk-field{margin-bottom:1.1rem;}
+        .abk-cover-row{display:flex;gap:14px;align-items:flex-start;}
+        .abk-cover-preview{width:70px;height:104px;object-fit:cover;border:0.5px solid rgba(201,168,76,0.3);flex-shrink:0;}
+        .abk-upload-row{display:flex;align-items:center;gap:12px;margin-top:8px;}
+        .abk-upload-btn{display:inline-block;background:none;border:0.5px solid rgba(201,168,76,0.3);padding:7px 16px;font-family:Georgia,serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,0.65);cursor:pointer;transition:all 0.25s;}
+        .abk-upload-btn:hover{border-color:#c9a84c;color:#c9a84c;}
+        .abk-upload-error{font-size:11px;color:#c0392b;font-style:italic;}
         .abk-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.55);margin-bottom:6px;font-style:italic;display:block;}
         .abk-input,.abk-select,.abk-textarea{width:100%;background:rgba(201,168,76,0.04);border:0.5px solid rgba(201,168,76,0.22);padding:9px 12px;font-family:Georgia,serif;font-size:13px;color:rgba(255,245,230,0.85);outline:none;}
+        .cs-wrapper{position:relative;width:100%;}
+        .cs-trigger{width:100%;background:rgba(201,168,76,0.04);border:0.5px solid rgba(201,168,76,0.22);padding:9px 12px;font-family:Georgia,serif;font-size:13px;color:rgba(255,245,230,0.85);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.2s;}
+        .cs-trigger:hover{border-color:rgba(201,168,76,0.4);}
+        .cs-placeholder{color:rgba(201,168,76,0.4);font-style:italic;}
+        .cs-chevron{font-size:10px;color:rgba(201,168,76,0.5);transition:transform 0.2s;}
+        .cs-chevron.open{transform:rotate(180deg);}
+        .cs-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0d0b0b;border:0.5px solid rgba(201,168,76,0.3);max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 12px 30px rgba(0,0,0,0.6);}
+        .cs-option{padding:9px 12px;font-size:13px;color:rgba(255,245,230,0.8);cursor:pointer;transition:background 0.15s,color 0.15s;font-style:italic;}
+        .cs-option:hover{background:rgba(201,168,76,0.1);color:#c9a84c;}
+        .cs-option.active{background:rgba(201,168,76,0.12);color:#c9a84c;font-style:normal;}
         .abk-textarea{min-height:80px;resize:vertical;line-height:1.6;}
         .abk-input:focus,.abk-select:focus,.abk-textarea:focus{border-color:rgba(201,168,76,0.45);}
         .abk-cat-grid{display:flex;flex-wrap:wrap;gap:8px;}
-        .abk-cat-chip{padding:5px 12px;font-size:11px;border:0.5px solid rgba(201,168,76,0.25);color:rgba(201,168,76,0.55);cursor:pointer;transition:all 0.2s;}
+        .abk-cat-chip{padding:5px 12px;font-size:11px;border:0.5px solid rgba(201,168,76,0.25);color:rgba(201,168,76,0.65);cursor:pointer;transition:all 0.2s;}
         .abk-cat-chip.active{border-color:#c9a84c;color:#c9a84c;background:rgba(201,168,76,0.08);}
+        .abk-cat-chip-add{border-style:dashed;color:rgba(201,168,76,0.4);}
+        .abk-cat-chip-add:hover{border-color:#c9a84c;color:#c9a84c;}
+        .abk-cat-chip-add{border-style:dashed;color:rgba(201,168,76,0.4);}
+        .abk-cat-chip-add:hover{border-color:#c9a84c;color:#c9a84c;}
+        .abk-cat-create{margin-top:12px;padding:12px;background:rgba(201,168,76,0.04);border:0.5px solid rgba(201,168,76,0.2);display:flex;flex-direction:column;gap:8px;}
+        .abk-cat-create-input{background:rgba(201,168,76,0.05);border:0.5px solid rgba(201,168,76,0.25);padding:8px 10px;font-family:Georgia,serif;font-size:13px;color:rgba(255,245,230,0.85);outline:none;}
+        .abk-cat-create-input::placeholder{color:rgba(201,168,76,0.3);font-style:italic;}
+        .abk-cat-create-error{font-size:11px;color:#c0392b;font-style:italic;}
+        .abk-cat-create-actions{display:flex;gap:8px;}
+        .abk-cat-create-cancel{flex:1;background:none;border:0.5px solid rgba(201,168,76,0.2);padding:7px;font-family:Georgia,serif;font-size:11px;letter-spacing:1px;color:rgba(201,168,76,0.55);cursor:pointer;transition:all 0.2s;}
+        .abk-cat-create-cancel:hover{border-color:rgba(201,168,76,0.4);color:#c9a84c;}
+        .abk-cat-create-save{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:7px;font-family:Georgia,serif;font-size:11px;letter-spacing:1px;color:#c0392b;cursor:pointer;transition:all 0.25s;}
+        .abk-cat-create-save:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
+        .abk-cat-create-cancel:disabled,.abk-cat-create-save:disabled{opacity:0.4;cursor:default;}
         .abk-form-error{font-size:12px;color:#c0392b;font-style:italic;margin-bottom:1rem;}
         .abk-form-actions{display:flex;gap:12px;margin-top:1.5rem;}
         .abk-save-btn{background:#1a0808;border:0.5px solid #8b2020;padding:11px 26px;font-family:Georgia,serif;font-size:12px;letter-spacing:2px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
@@ -236,183 +456,278 @@ export default function AdminBookPage() {
         .abk-del-confirm{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:11px;font-family:Georgia,serif;font-size:12px;letter-spacing:1.5px;color:#c0392b;text-transform:uppercase;cursor:pointer;transition:all 0.3s;}
         .abk-del-confirm:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
         .abk-del-confirm:disabled,.abk-del-keep:disabled{opacity:0.4;cursor:default;}
+        .cs-search-row{padding:8px;border-bottom:0.5px solid rgba(201,168,76,0.15);position:sticky;top:0;background:#0d0b0b;}
+        .cs-search-input{width:100%;background:rgba(201,168,76,0.06);border:0.5px solid rgba(201,168,76,0.25);padding:7px 10px;font-family:Georgia,serif;font-size:12px;color:rgba(255,245,230,0.85);outline:none;}
+        .cs-search-input::placeholder{color:rgba(201,168,76,0.35);font-style:italic;}
+        .cs-empty{padding:14px 12px;font-size:12px;color:rgba(201,168,76,0.35);font-style:italic;text-align:center;}
+        .cs-create-btn{padding:10px 12px;font-size:12px;letter-spacing:1px;color:#c9a84c;cursor:pointer;border-top:0.5px solid rgba(201,168,76,0.15);transition:background 0.15s;font-style:italic;}
+        .cs-create-btn:hover{background:rgba(201,168,76,0.08);}
+        .cs-create-form{padding:14px;display:flex;flex-direction:column;gap:8px;}
+        .cs-create-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,0.55);margin-bottom:4px;font-style:italic;}
+        .cs-create-input{background:rgba(201,168,76,0.05);border:0.5px solid rgba(201,168,76,0.25);padding:8px 10px;font-family:Georgia,serif;font-size:13px;color:rgba(255,245,230,0.85);outline:none;}
+        .cs-create-input::placeholder{color:rgba(201,168,76,0.3);font-style:italic;}
+        .cs-create-error{font-size:11px;color:#c0392b;font-style:italic;}
+        .cs-create-actions{display:flex;gap:8px;margin-top:4px;}
+        .cs-create-cancel{flex:1;background:none;border:0.5px solid rgba(201,168,76,0.2);padding:7px;font-family:Georgia,serif;font-size:11px;letter-spacing:1px;color:rgba(201,168,76,0.55);cursor:pointer;transition:all 0.2s;}
+        .cs-create-cancel:hover{border-color:rgba(201,168,76,0.4);color:#c9a84c;}
+        .cs-create-save{flex:1;background:#1a0808;border:0.5px solid #8b2020;padding:7px;font-family:Georgia,serif;font-size:11px;letter-spacing:1px;color:#c0392b;cursor:pointer;transition:all 0.25s;}
+        .cs-create-save:hover{background:#2a1010;border-color:#c9a84c;color:#c9a84c;}
+        .cs-create-cancel:disabled,.cs-create-save:disabled{opacity:0.4;cursor:default;}
       `}</style>
 
-      <div className="abk-root">
-        <div className="abk-inner">
-          <div className="abk-breadcrumb">
-            <Link to="/">Home</Link>
-            <span className="sep">·</span>
-            <span className="current">Admin — Books</span>
-          </div>
-
-          <div className="abk-head">
-            <div>
-              <div className="abk-kicker">✦ Admin Panel</div>
-              <h1 className="abk-title">Book <em>Management</em></h1>
-            </div>
-            <button className="abk-add-btn" onClick={openCreateForm}>+ Add New Book</button>
-          </div>
-
-          {loading ? (
-            <div className="abk-loading">✦ &nbsp;Loading&nbsp; ✦</div>
-          ) : (
-            <table className="abk-table">
-              <thead>
-                <tr>
-                  <th className="abk-th"></th>
-                  <th className="abk-th">Title</th>
-                  <th className="abk-th">Price</th>
-                  <th className="abk-th">Stock</th>
-                  <th className="abk-th" style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {books.map(book => (
-                  <tr key={book.id} className="abk-tr">
-                    <td className="abk-td">
-                      {book.coverUrl ? (
-                        <img className="abk-td-cover" src={book.coverUrl} alt={book.title} />
-                      ) : (
-                        <div className="abk-td-fallback">✦</div>
-                      )}
-                    </td>
-                    <td className="abk-td">
-                      <div className="abk-td-title">{book.title}</div>
-                      <div className="abk-td-author">{book.authorName}</div>
-                    </td>
-                    <td className="abk-td"><span className="abk-td-price">${Number(book.price).toFixed(2)}</span></td>
-                    <td className="abk-td">
-                      <span className={`abk-td-stock ${book.inStock ? "ok" : "low"}`}>
-                        {book.inStock ? "✦ In Stock" : "✦ Out of Stock"}
-                      </span>
-                    </td>
-                    <td className="abk-td right">
-                      <div className="abk-actions">
-                        <button className="abk-action-btn edit" onClick={() => openEditForm(book)}>Edit</button>
-                        <button className="abk-action-btn delete" onClick={() => setDeleteTarget(book)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {totalPages > 1 && (
-            <div className="abk-pagination">
-              <button className="abk-page-link" disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹</button>
-              {pages.map((p, i) => (
-                <span key={p} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  {i > 0 && p - pages[i - 1] > 1 && <span className="abk-page-gem">◆</span>}
-                  <button className={`abk-page-link ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p + 1}</button>
-                </span>
-              ))}
-              <button className="abk-page-link" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>›</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showForm && (
-        <div className="abk-modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="abk-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="abk-modal-title">{editingId ? "Edit Book" : "Add New Book"}</h3>
-
-            <form onSubmit={handleSubmit}>
-              <div className="abk-field">
-                <label className="abk-label">Title</label>
-                <input className="abk-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
-              </div>
-
-              <div className="abk-form-row">
-                <div className="abk-field">
-                  <label className="abk-label">ISBN</label>
-                  <input className="abk-input" value={form.isbn} onChange={e => setForm({ ...form, isbn: e.target.value })} />
-                </div>
-                <div className="abk-field">
-                  <label className="abk-label">Publication Year</label>
-                  <input className="abk-input" type="number" value={form.publicationYear} onChange={e => setForm({ ...form, publicationYear: e.target.value })} />
-                </div>
-                <div className="abk-field">
-                  <label className="abk-label">Price ($)</label>
-                  <input className="abk-input" type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
-                </div>
-                <div className="abk-field">
-                  <label className="abk-label">Stock Quantity</label>
-                  <input className="abk-input" type="number" value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: e.target.value })} required />
-                </div>
-                <div className="abk-field">
-                  <label className="abk-label">Author</label>
-                  <select className="abk-select" value={form.authorId} onChange={e => setForm({ ...form, authorId: e.target.value })}>
-                    <option value="">— Select —</option>
-                    {authors.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                </div>
-                <div className="abk-field">
-                  <label className="abk-label">Publisher</label>
-                  <select className="abk-select" value={form.publisherId} onChange={e => setForm({ ...form, publisherId: e.target.value })}>
-                    <option value="">— Select —</option>
-                    {publishers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="abk-field">
-                <label className="abk-label">Cover URL</label>
-                <input className="abk-input" value={form.coverUrl} onChange={e => setForm({ ...form, coverUrl: e.target.value })} />
-              </div>
-
-              <div className="abk-field">
-                <label className="abk-label">Description</label>
-                <textarea className="abk-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-              </div>
-
-              <div className="abk-field">
-                <label className="abk-label">Categories</label>
-                <div className="abk-cat-grid">
-                  {categories.map(c => (
-                    <div
-                      key={c.id}
-                      className={`abk-cat-chip ${form.categoryIds.includes(c.id) ? "active" : ""}`}
-                      onClick={() => toggleCategory(c.id)}
-                    >
-                      {c.name}
+            <div className="abk-root">
+                <div className="abk-inner">
+                    <div className="abk-breadcrumb">
+                        <Link to="/">Home</Link>
+                        <span className="sep">·</span>
+                        <span className="current">Admin — Books</span>
                     </div>
-                  ))}
+
+                    <div className="abk-head">
+                        <div>
+                            <div className="abk-kicker">✦ Admin Panel</div>
+                            <h1 className="abk-title">Book <em>Management</em></h1>
+                        </div>
+                        <button className="abk-add-btn" onClick={openCreateForm}>+ Add New Book</button>
+                    </div>
+
+                    {loading ? (
+                        <div className="abk-loading">✦ &nbsp;Loading&nbsp; ✦</div>
+                    ) : (
+                        <table className="abk-table">
+                            <thead>
+                                <tr>
+                                    <th className="abk-th"></th>
+                                    <th className="abk-th">Title</th>
+                                    <th className="abk-th">Price</th>
+                                    <th className="abk-th">Stock</th>
+                                    <th className="abk-th" style={{ textAlign: "right" }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {books.map(book => (
+                                    <tr key={book.id} className="abk-tr">
+                                        <td className="abk-td">
+                                            {book.coverUrl ? (
+                                                <img className="abk-td-cover" src={book.coverUrl} alt={book.title} />
+                                            ) : (
+                                                <div className="abk-td-fallback">✦</div>
+                                            )}
+                                        </td>
+                                        <td className="abk-td">
+                                            <div className="abk-td-title">{book.title}</div>
+                                            <div className="abk-td-author">{book.authorName}</div>
+                                        </td>
+                                        <td className="abk-td"><span className="abk-td-price">${Number(book.price).toFixed(2)}</span></td>
+                                        <td className="abk-td">
+                                            <span className={`abk-td-stock ${book.inStock ? "ok" : "low"}`}>
+                                                {book.inStock ? "✦ In Stock" : "✦ Out of Stock"}
+                                            </span>
+                                        </td>
+                                        <td className="abk-td right">
+                                            <div className="abk-actions">
+                                                <button className="abk-action-btn edit" onClick={() => openEditForm(book)}>Edit</button>
+                                                <button className="abk-action-btn delete" onClick={() => setDeleteTarget(book)}>Delete</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {totalPages > 1 && (
+                        <div className="abk-pagination">
+                            <button className="abk-page-link" disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹</button>
+                            {pages.map((p, i) => (
+                                <span key={p} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                                    {i > 0 && p - pages[i - 1] > 1 && <span className="abk-page-gem">◆</span>}
+                                    <button className={`abk-page-link ${p === page ? "active" : ""}`} onClick={() => setPage(p)}>{p + 1}</button>
+                                </span>
+                            ))}
+                            <button className="abk-page-link" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>›</button>
+                        </div>
+                    )}
                 </div>
-              </div>
-
-              {formError && <p className="abk-form-error">{formError}</p>}
-
-              <div className="abk-form-actions">
-                <button type="submit" className="abk-save-btn" disabled={saving}>
-                  {saving ? "Saving…" : editingId ? "Save Changes" : "Create Book"}
-                </button>
-                <button type="button" className="abk-cancel-btn" onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {deleteTarget && (
-        <div className="abk-modal-overlay" onClick={() => setDeleteTarget(null)}>
-          <div className="abk-del-modal" onClick={e => e.stopPropagation()}>
-            <div className="abk-del-icon">✦</div>
-            <h3 className="abk-del-title">Delete This Book?</h3>
-            <p className="abk-del-text">
-              "{deleteTarget.title}" will be permanently removed from the catalogue. This action cannot be undone.
-            </p>
-            <div className="abk-del-actions">
-              <button className="abk-del-keep" onClick={() => setDeleteTarget(null)} disabled={deleting}>Keep Book</button>
-              <button className="abk-del-confirm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Yes, Delete It"}
-              </button>
             </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+
+            {showForm && (
+                <div className="abk-modal-overlay" onClick={() => setShowForm(false)}>
+                    <div className="abk-modal" onClick={e => e.stopPropagation()}>
+                        <h3 className="abk-modal-title">{editingId ? "Edit Book" : "Add New Book"}</h3>
+
+                        <form onSubmit={handleSubmit}>
+                            <div className="abk-field">
+                                <label className="abk-label">Title</label>
+                                <input className="abk-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
+                            </div>
+
+                            <div className="abk-form-row">
+                                <div className="abk-field">
+                                    <label className="abk-label">ISBN</label>
+                                    <input className="abk-input" value={form.isbn} onChange={e => setForm({ ...form, isbn: e.target.value })} />
+                                </div>
+                                <div className="abk-field">
+                                    <label className="abk-label">Publication Year</label>
+                                    <input className="abk-input" type="number" value={form.publicationYear} onChange={e => setForm({ ...form, publicationYear: e.target.value })} />
+                                </div>
+                                <div className="abk-field">
+                                    <label className="abk-label">Price ($)</label>
+                                    <input className="abk-input" type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
+                                </div>
+                                <div className="abk-field">
+                                    <label className="abk-label">Stock Quantity</label>
+                                    <input className="abk-input" type="number" value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: e.target.value })} required />
+                                </div>
+                                <div className="abk-field">
+                                    <label className="abk-label">Author</label>
+                                    <CustomSelect
+                                        value={form.authorId}
+                                        onChange={id => setForm({ ...form, authorId: id })}
+                                        options={authors}
+                                        createLabel="Add New Author"
+                                        onCreateNew={async (fields) => {
+                                            const res = await authorApi.create(fields);
+                                            setAuthors(prev => [...prev, res.data]);
+                                            return res.data;
+                                        }}
+                                    />
+                                </div>
+                                <div className="abk-field">
+                                    <label className="abk-label">Publisher</label>
+                                    <CustomSelect
+                                        value={form.publisherId}
+                                        onChange={id => setForm({ ...form, publisherId: id })}
+                                        options={publishers}
+                                        createLabel="Add New Publisher"
+                                        onCreateNew={async (fields) => {
+                                            const res = await publisherApi.create(fields);
+                                            setPublishers(prev => [...prev, res.data]);
+                                            return res.data;
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="abk-field">
+                                <label className="abk-label">Cover Image</label>
+
+                                <div className="abk-cover-row">
+                                    {form.coverUrl && (
+                                        <img src={form.coverUrl} alt="Cover preview" className="abk-cover-preview" />
+                                    )}
+                                    <div style={{ flex: 1 }}>
+                                        <input
+                                            className="abk-input"
+                                            value={form.coverUrl}
+                                            onChange={e => setForm({ ...form, coverUrl: e.target.value })}
+                                            placeholder="Paste image URL, or upload below"
+                                        />
+                                        <div className="abk-upload-row">
+                                            <label className="abk-upload-btn">
+                                                {uploading ? "Uploading…" : "⊷ Upload Image"}
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    onChange={handleCoverUpload}
+                                                    disabled={uploading}
+                                                    style={{ display: "none" }}
+                                                />
+                                            </label>
+                                            {uploadError && <span className="abk-upload-error">{uploadError}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="abk-field">
+                                <label className="abk-label">Description</label>
+                                <textarea className="abk-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                            </div>
+
+                            <div className="abk-field">
+                                <label className="abk-label">Categories</label>
+                                <div className="abk-cat-grid">
+                                    {categories.map(c => (
+                                        <div
+                                            key={c.id}
+                                            className={`abk-cat-chip ${form.categoryIds.includes(c.id) ? "active" : ""}`}
+                                            onClick={() => toggleCategory(c.id)}
+                                        >
+                                            {c.name}
+                                        </div>
+                                    ))}
+                                    <div
+                                        className="abk-cat-chip abk-cat-chip-add"
+                                        onClick={() => setShowCategoryForm(true)}
+                                    >
+                                        + Add New
+                                    </div>
+                                </div>
+
+                                {showCategoryForm && (
+                                    <div className="abk-cat-create">
+                                        <input
+                                            className="abk-cat-create-input"
+                                            value={newCategoryName}
+                                            onChange={e => setNewCategoryName(e.target.value)}
+                                            placeholder="New category name"
+                                            autoFocus
+                                            onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleCreateCategory())}
+                                        />
+                                        {categoryError && <span className="abk-cat-create-error">{categoryError}</span>}
+                                        <div className="abk-cat-create-actions">
+                                            <button
+                                                type="button"
+                                                className="abk-cat-create-cancel"
+                                                onClick={() => { setShowCategoryForm(false); setNewCategoryName(""); setCategoryError(null); }}
+                                                disabled={creatingCategory}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="abk-cat-create-save"
+                                                onClick={handleCreateCategory}
+                                                disabled={creatingCategory}
+                                            >
+                                                {creatingCategory ? "Adding…" : "Add"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {formError && <p className="abk-form-error">{formError}</p>}
+
+                            <div className="abk-form-actions">
+                                <button type="submit" className="abk-save-btn" disabled={saving}>
+                                    {saving ? "Saving…" : editingId ? "Save Changes" : "Create Book"}
+                                </button>
+                                <button type="button" className="abk-cancel-btn" onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {deleteTarget && (
+                <div className="abk-modal-overlay" onClick={() => setDeleteTarget(null)}>
+                    <div className="abk-del-modal" onClick={e => e.stopPropagation()}>
+                        <div className="abk-del-icon">✦</div>
+                        <h3 className="abk-del-title">Delete This Book?</h3>
+                        <p className="abk-del-text">
+                            "{deleteTarget.title}" will be permanently removed from the catalogue. This action cannot be undone.
+                        </p>
+                        <div className="abk-del-actions">
+                            <button className="abk-del-keep" onClick={() => setDeleteTarget(null)} disabled={deleting}>Keep Book</button>
+                            <button className="abk-del-confirm" onClick={handleDelete} disabled={deleting}>
+                                {deleting ? "Deleting…" : "Yes, Delete It"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }
